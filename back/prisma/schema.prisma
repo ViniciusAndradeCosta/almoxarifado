@@ -44,6 +44,7 @@ model Item {
   withdrawals Withdrawal[]
   stockEntries StockEntry[]
   discardedItems DiscardedItem[]
+  laundryRecords LaundryRecord[]
 }
 
 model Withdrawal {
@@ -130,3 +131,17 @@ model DiscardedItem {
   createdAt     DateTime @default(now())
 }
 
+model LaundryRecord {
+  id              Int       @id @default(autoincrement())
+  itemId          Int
+  item            Item      @relation(fields: [itemId], references: [id])
+  quantity        Int
+  status          String    @default("ENVIADA") // ENVIADA, RETORNADA
+  sendDate        DateTime  @default(now())     // Data de envio para lavanderia
+  expectedReturn  DateTime?                     // Previsão de retorno
+  returnDate      DateTime?                     // Data real do retorno
+  laundryName     String?                       // Nome da lavanderia
+  sentBy          String?                       // Quem enviou
+  notes           String?
+  createdAt       DateTime  @default(now())
+}

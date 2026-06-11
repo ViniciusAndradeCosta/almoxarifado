@@ -12,6 +12,7 @@ import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } fro
 import { getSuggestions, updateMinStock, updateMinStockBatch } from '../controllers/Item/SuggestionController.js';
 import { getAlerts, getAlertByItem, getAlertCount } from '../controllers/Item/AlertController.js';
 import { createDiscard, getDiscarded, getDiscardedByItem, getDiscardReport, deleteDiscard } from '../controllers/Item/DiscardController.js';
+import { sendToLaundry, returnFromLaundry, getPending, getLaundryHistory, getLaundryRecord } from '../controllers/Item/LaundryController.js';
 
 const routes = Router();
 
@@ -105,5 +106,12 @@ routes.get('/getdiscarded', getDiscarded);
 routes.get('/getdiscarded/:itemId', getDiscardedByItem);
 routes.get('/reports/discards', getDiscardReport);
 routes.delete('/deletediscard/:id', deleteDiscard);
+
+//ROTAS DE LAVANDERIA
+routes.post('/laundry/send', sendToLaundry);
+routes.post('/laundry/return/:id', returnFromLaundry);
+routes.get('/laundry/pending', getPending);
+routes.get('/laundry/all', getLaundryHistory);
+routes.get('/laundry/:id', getLaundryRecord);
 
 export default routes;
