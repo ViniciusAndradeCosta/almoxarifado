@@ -1,86 +1,22 @@
 import prisma from "../../database/client.js";
+import { registrarSaida, validarDataSaida } from "../../services/stockService.js";
 
 async function giveItem(req, res) {
     const { employeeId, itemId, quantity, withdrawalDate } = req.body;
 
-    const verifyItem = await prisma.item.findUnique({
-        where: {
-            id: itemId
-        }
-    });
-
-    if (!verifyItem) {
-        return res.status(400).json({ error: 'Item não encontrado' });
-    }
-
-    // Buscar dados do funcionário
-    const employee = await prisma.employee.findUnique({
-        where: {
-            id: employeeId
-        }
-    });
-
-    if (!employee) {
-        return res.status(400).json({ error: 'Funcionário não encontrado' });
-    }
-
     try {
-        // Salvar na tabela Withdrawal
-        const newWithdrawal = await prisma.withdrawal.create({
-            data: {
-                employeeId,
-                itemId,
-                quantity
-            }
+        const result = await registrarSaida({ employeeId, itemId, quantity, withdrawalDate });
+        return res.json({
+            success: true,
+            withdrawal: result.withdrawal,
+            allWithdrawal: result.allWithdrawal,
+            message: "Saída registrada com sucesso (estoque atualizado de forma transacional).",
         });
-
-        // Salvar na tabela AllWithdrawal, agora com o idWithdrawal correto
-        const allWithdrawalData = {
-            withdrawalDate: withdrawalDate ? new Date(withdrawalDate) : new Date(),
-            idWithdrawal: newWithdrawal.id, // Corrigido para usar o id do withdrawal criado
-            itemId: itemId,
-            itemName: verifyItem.name,
-            itemType: verifyItem.type,
-            itemSector: verifyItem.sector,
-            itemSize: verifyItem.size || null,
-            itemEan: verifyItem.ean || null,
-            quantity: quantity,
-            employeeName: employee.name,
-            employeeId: employeeId,
-            employeeRole: employee.role,
-            employeeCompany: employee.company,
-            employeeDepartment: employee.department
-        };
-        console.log(allWithdrawalData)
-
-        const newAllWithdrawal = await prisma.allWithdrawal.create({
-            data: allWithdrawalData
-        });
-
-        const updatedItem = await prisma.item.update({
-            where: {
-                id: itemId
-            },
-            data: {
-                quantity: {
-                    decrement: quantity
-                }
-            }
-        });
-
-        res.json({ 
-            success: true, 
-            withdrawal: newWithdrawal, 
-            allWithdrawal: newAllWithdrawal,
-            message: 'Saída registrada com sucesso em ambas as tabelas'
-        });
-    }
-    catch (error) {
-        console.error('Erro ao processar saída:', error);
-        res.status(500).json({ 
-            error: error.message,
-            details: error,
-            success: false
+    } catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({
+            success: false,
+            error: error.message || "Erro ao processar saída.",
         });
     }
 }
@@ -227,32 +163,37 @@ async function updateWithdrawal(req, res) {
     const { quantity, withdrawalDate } = req.body;
 
     try {
-        const withdrawal = await prisma.withdrawal.update({
-            where: {
-                id: parseInt(id)
-            },
-            data: {
-                quantity,
-                withdrawalDate
-            }
-        });
-        const allWithdrawal = await prisma.allWithdrawal.updateMany({
-            where: {
-                idWithdrawal: parseInt(id)
-            },
-            data: {
-                quantity,
-                withdrawalDate
-            }
+        
+        validarDataSaida(withdrawalDate);
+
+        if (quantity !== undefined && (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0)) {
+            return res.status(400).json({ error: "Quantidade inválida." });
+        }
+        const result = await prisma.$transaction(async (tx) => {
+            const withdrawal = await tx.withdrawal.update({
+                where: { id: parseInt(id) },
+                data: {
+                    quantity: quantity !== undefined ? Number(quantity) : undefined,
+                    withdrawalDate: withdrawalDate ? new Date(withdrawalDate) : undefined,
+                },
+            });
+            const allWithdrawal = await tx.allWithdrawal.updateMany({
+                where: { idWithdrawal: parseInt(id) },
+                data: {
+                    quantity: quantity !== undefined ? Number(quantity) : undefined,
+                    withdrawalDate: withdrawalDate ? new Date(withdrawalDate) : undefined,
+                },
+            });
+            return { withdrawal, allWithdrawal };
         });
 
-        res.json({ allWithdrawal,
-            updatedAllWithdrawalCount: allWithdrawal.count
-         });
-
-    }
-    catch (error) {
-        res.json({ error: error.message });
+        return res.json({
+            allWithdrawal: result.allWithdrawal,
+            updatedAllWithdrawalCount: result.allWithdrawal.count,
+        });
+    } catch (error) {
+        const status = error.status || 500;
+        return res.status(status).json({ error: error.message });
     }
 }
 
