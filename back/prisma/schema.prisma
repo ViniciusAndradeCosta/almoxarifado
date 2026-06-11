@@ -92,3 +92,26 @@ model StockEntry {
   notes         String?  // Observações
   createdAt     DateTime @default(now())
 }
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  orderDate   DateTime    @default(now())
+  status      String      @default("PENDENTE") // PENDENTE, PARCIAL, ENTREGUE, CANCELADO
+  supplier    String?     // Fornecedor
+  notes       String?     // Observações gerais do pedido
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId      Int?     // Referência ao item do estoque (opcional, pode ser item novo)
+  itemName    String   // Nome da peça pedida
+  itemType    String?  // Tipo (UNIFORME, LIMPEZA, etc.)
+  itemSize    String?  // Tamanho (P, M, G, GG, etc.)
+  quantity    Int      // Quantidade pedida
+  quantityReceived Int @default(0) // Quantidade já recebida
+}

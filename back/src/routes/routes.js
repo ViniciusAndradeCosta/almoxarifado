@@ -7,7 +7,7 @@ import { getEmployeeCountByCompany, getEmployeeCountByDepartment } from '../cont
 import { getEmployeesStartingToday } from '../controllers/Employee/NewEmployess.js';
 import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdrawals, getWithdrawalsOut, getWithdrawalsOutPlus, giveItem, returnItem, returnItemAndAddQuantity, updateWithdrawal, getWithdrawalsByItem, deleteItemWithWithdrawals, testAllWithdrawal, deleteAllWithdrawal } from '../controllers/Item/ItensOut.js';
 import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEntry } from '../controllers/Item/StockEntryController.js';
-
+import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, deleteOrder } from '../controllers/Item/OrderController.js';
 
 const routes = Router();
 
@@ -70,5 +70,13 @@ routes.post('/stockentry', createStockEntry);
 routes.get('/getstockentries', getStockEntries);
 routes.get('/getstockentries/:itemId', getStockEntriesByItem);
 routes.delete('/deletestockentry/:id', deleteStockEntry);
+
+//ROTAS DE PEDIDOS DE UNIFORMES
+routes.post('/order', createOrder);
+routes.get('/getorders', getOrders);
+routes.get('/getorder/:id', getOrder);
+routes.put('/updateorderstatus/:id', updateOrderStatus);
+routes.post('/receiveorderitem/:orderItemId', receiveOrderItem);
+routes.delete('/deleteorder/:id', deleteOrder);
 
 export default routes;
