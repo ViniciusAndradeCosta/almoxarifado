@@ -9,6 +9,7 @@ import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdr
 import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEntry } from '../controllers/Item/StockEntryController.js';
 import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, deleteOrder } from '../controllers/Item/OrderController.js';
 import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } from '../controllers/Item/ReportController.js';
+import { getSuggestions, updateMinStock, updateMinStockBatch } from '../controllers/Item/SuggestionController.js';
 
 
 const routes = Router();
@@ -86,5 +87,10 @@ routes.get('/reports/item/:itemId', getReportByItem);
 routes.get('/reports/consumption', getConsumptionReport);
 routes.get('/reports/stock-summary', getStockSummary);
 routes.get('/reports/export/csv', exportCSV);
+
+//ROTAS DE SUGESTÃO DE PEDIDO
+routes.get('/suggestions', getSuggestions);
+routes.put('/item/:id/minstock', updateMinStock);
+routes.put('/items/minstock/batch', updateMinStockBatch);
 
 export default routes;

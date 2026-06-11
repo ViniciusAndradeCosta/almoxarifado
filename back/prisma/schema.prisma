@@ -40,6 +40,7 @@ model Item {
   type        String
   sector      String
   size        String?
+  minStock     Int          @default(0) //margem de segurança para estoque mínimo
   withdrawals Withdrawal[]
   stockEntries StockEntry[]
 }
@@ -115,3 +116,4 @@ model OrderItem {
   quantity    Int      // Quantidade pedida
   quantityReceived Int @default(0) // Quantidade já recebida
 }
+
