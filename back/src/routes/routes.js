@@ -11,7 +11,7 @@ import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, 
 import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } from '../controllers/Item/ReportController.js';
 import { getSuggestions, updateMinStock, updateMinStockBatch } from '../controllers/Item/SuggestionController.js';
 import { getAlerts, getAlertByItem, getAlertCount } from '../controllers/Item/AlertController.js';
-
+import { createDiscard, getDiscarded, getDiscardedByItem, getDiscardReport, deleteDiscard } from '../controllers/Item/DiscardController.js';
 
 const routes = Router();
 
@@ -98,5 +98,12 @@ routes.put('/items/minstock/batch', updateMinStockBatch);
 routes.get('/alerts', getAlerts);
 routes.get('/alerts/item/:itemId', getAlertByItem);
 routes.get('/alerts/count', getAlertCount);
+
+//ROTAS DE PEÇAS DESCARTADAS
+routes.post('/discard', createDiscard);
+routes.get('/getdiscarded', getDiscarded);
+routes.get('/getdiscarded/:itemId', getDiscardedByItem);
+routes.get('/reports/discards', getDiscardReport);
+routes.delete('/deletediscard/:id', deleteDiscard);
 
 export default routes;
