@@ -6,7 +6,7 @@ import { createEmployee, deleteEmployee, downloadNewEmployee, getEmployee, getEm
 import { getEmployeeCountByCompany, getEmployeeCountByDepartment } from '../controllers/Employee/CountEmployess.js';
 import { getEmployeesStartingToday } from '../controllers/Employee/NewEmployess.js';
 import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdrawals, getWithdrawalsOut, getWithdrawalsOutPlus, giveItem, returnItem, returnItemAndAddQuantity, updateWithdrawal, getWithdrawalsByItem, deleteItemWithWithdrawals, testAllWithdrawal, deleteAllWithdrawal } from '../controllers/Item/ItensOut.js';
-
+import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEntry } from '../controllers/Item/StockEntryController.js';
 
 
 const routes = Router();
@@ -64,5 +64,11 @@ routes.get('/testallwithdrawal', testAllWithdrawal);
 routes.get('/getallwithdrawals', getAllWithdrawals);
 routes.post('/newwithdrawal', createWithdrawal)
 routes.delete('/deleteallwithdrawal/:id', deleteAllWithdrawal);
+
+//ROTAS DE ENTRADA DE ESTOQUE
+routes.post('/stockentry', createStockEntry);
+routes.get('/getstockentries', getStockEntries);
+routes.get('/getstockentries/:itemId', getStockEntriesByItem);
+routes.delete('/deletestockentry/:id', deleteStockEntry);
 
 export default routes;

@@ -41,6 +41,7 @@ model Item {
   sector      String
   size        String?
   withdrawals Withdrawal[]
+  stockEntries StockEntry[]
 }
 
 model Withdrawal {
@@ -78,4 +79,16 @@ model AllWithdrawal {
   employeeRole       String
   employeeCompany    String
   employeeDepartment String
+}
+
+model StockEntry {
+  id            Int      @id @default(autoincrement())
+  itemId        Int
+  item          Item     @relation(fields: [itemId], references: [id])
+  quantity      Int
+  entryDate     DateTime @default(now())
+  supplier      String?  // Fornecedor ou origem da entrada
+  invoiceNumber String?  // Número da nota fiscal (opcional)
+  notes         String?  // Observações
+  createdAt     DateTime @default(now())
 }
