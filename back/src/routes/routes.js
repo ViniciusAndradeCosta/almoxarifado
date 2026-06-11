@@ -10,6 +10,7 @@ import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEn
 import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, deleteOrder } from '../controllers/Item/OrderController.js';
 import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } from '../controllers/Item/ReportController.js';
 import { getSuggestions, updateMinStock, updateMinStockBatch } from '../controllers/Item/SuggestionController.js';
+import { getAlerts, getAlertByItem, getAlertCount } from '../controllers/Item/AlertController.js';
 
 
 const routes = Router();
@@ -92,5 +93,10 @@ routes.get('/reports/export/csv', exportCSV);
 routes.get('/suggestions', getSuggestions);
 routes.put('/item/:id/minstock', updateMinStock);
 routes.put('/items/minstock/batch', updateMinStockBatch);
+
+//ROTAS DE ALERTAS
+routes.get('/alerts', getAlerts);
+routes.get('/alerts/item/:itemId', getAlertByItem);
+routes.get('/alerts/count', getAlertCount);
 
 export default routes;
