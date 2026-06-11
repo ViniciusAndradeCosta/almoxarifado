@@ -8,6 +8,8 @@ import { getEmployeesStartingToday } from '../controllers/Employee/NewEmployess.
 import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdrawals, getWithdrawalsOut, getWithdrawalsOutPlus, giveItem, returnItem, returnItemAndAddQuantity, updateWithdrawal, getWithdrawalsByItem, deleteItemWithWithdrawals, testAllWithdrawal, deleteAllWithdrawal } from '../controllers/Item/ItensOut.js';
 import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEntry } from '../controllers/Item/StockEntryController.js';
 import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, deleteOrder } from '../controllers/Item/OrderController.js';
+import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } from '../controllers/Item/ReportController.js';
+
 
 const routes = Router();
 
@@ -78,5 +80,11 @@ routes.get('/getorder/:id', getOrder);
 routes.put('/updateorderstatus/:id', updateOrderStatus);
 routes.post('/receiveorderitem/:orderItemId', receiveOrderItem);
 routes.delete('/deleteorder/:id', deleteOrder);
+
+//ROTAS DE RELATÓRIOS
+routes.get('/reports/item/:itemId', getReportByItem);
+routes.get('/reports/consumption', getConsumptionReport);
+routes.get('/reports/stock-summary', getStockSummary);
+routes.get('/reports/export/csv', exportCSV);
 
 export default routes;
