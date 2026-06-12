@@ -91,36 +91,26 @@ const Estoque: React.FC = () => {
 
     const handleDeleteItem = async (id: number) => {
     try {
-        // Busca as saídas vinculadas ao item
         const withdrawalsResponse = await api.get(`/getwithdrawalsbyitem/${id}`);
         const withdrawals = withdrawalsResponse.data || [];
 
+        let confirmMessage = 'Deseja realmente excluir este item?';
         if (withdrawals.length > 0) {
-            // Item tem saídas vinculadas
-            const confirmDelete = window.confirm(
-                `Este item possui ${withdrawals.length} saída(s) vinculada(s).\n\n` +
-                `Excluí-lo irá apagar TAMBÉM todas essas saídas do histórico.\n\n` +
-                `Deseja realmente excluir o item e suas saídas?`
-            );
-
-            if (!confirmDelete) return;
-
-            await api.delete(`/deleteitemwithwithdrawals/${id}`);
-        } else {
-            // Item sem saídas, exclusão simples
-            const confirmDelete = window.confirm('Deseja realmente excluir este item?');
-
-            if (!confirmDelete) return;
-
-            await api.delete(`/item/${id}`);
+            confirmMessage = `Este item possui ${withdrawals.length} saída(s) vinculada(s).\n\nExcluí-lo irá apagar TAMBÉM todas essas saídas e registros relacionados.\n\nDeseja realmente excluir?`;
         }
 
+        if (!window.confirm(confirmMessage)) return;
+
+        // Sempre usa a rota que limpa todas as tabelas relacionadas
+        await api.delete(`/deleteitemwithwithdrawals/${id}`);
+        window.alert('Item excluído com sucesso!');
         fetchItems();
-    } catch (error) {
+    } catch (error: any) {
         console.log(error);
-        window.alert('Erro ao excluir o item.');
+        const msg = error.response?.data?.error || 'Erro ao excluir o item.';
+        window.alert(msg);
     }
-}
+};
 
     const [itemName, setItemName] = useState('');
     const [itemQuantity, setItemQuantity] = useState(0);

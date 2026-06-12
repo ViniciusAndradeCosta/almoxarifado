@@ -318,28 +318,32 @@ async function deleteItemWithWithdrawals(req, res) {
     const { itemId } = req.params;
 
     try {
-        // Primeiro, deletar todas as saídas relacionadas ao item
-        await prisma.withdrawal.deleteMany({
-            where: {
-                itemId: parseInt(itemId)
-            }
+        const id = parseInt(itemId);
+
+        await prisma.$transaction(async (tx) => {
+            // Deletar registros de todas as tabelas relacionadas
+            await tx.stockEntry.deleteMany({ where: { itemId: id } });
+            await tx.discardedItem.deleteMany({ where: { itemId: id } });
+            await tx.laundryRecord.deleteMany({ where: { itemId: id } });
+            await tx.withdrawal.deleteMany({ where: { itemId: id } });
+
+            // Limpar referência nos itens de pedido (não deleta o pedido, só desvincula)
+            await tx.orderItem.updateMany({
+                where: { itemId: id },
+                data: { itemId: null },
+            });
+
+            // Deletar o item
+            await tx.item.delete({ where: { id: id } });
         });
 
-        // Depois, deletar o item
-        const deletedItem = await prisma.item.delete({
-            where: {
-                id: parseInt(itemId)
-            }
-        });
-
-        res.json({ 
-            message: 'Item e todas as suas saídas foram deletados com sucesso',
-            deletedItem 
-        });
+        res.json({ success: true, message: 'Item e todos os registros relacionados foram deletados.' });
     } catch (error) {
-        res.json({ error: error.message });
+        console.error('Erro ao deletar item:', error);
+        res.status(500).json({ error: error.message });
     }
 }
+
 
 async function testAllWithdrawal(req, res) {
     try {

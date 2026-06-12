@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './Navbar.css';
 import { useAuth } from '../Auth/AuthContext';
 import api from '../services/useApi';
@@ -7,6 +7,8 @@ import api from '../services/useApi';
 const Navbar = () => {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [alertCount, setAlertCount] = useState(0);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const navRef = useRef<HTMLUListElement>(null);
 
     const toggleMobileMenu = () => {
         setMobileMenuOpen(!isMobileMenuOpen);
@@ -14,7 +16,25 @@ const Navbar = () => {
 
     const logout = useAuth().logout;
 
-    // Polling de alertas a cada 60 segundos
+    const toggleDropdown = (name: string) => {
+        setOpenDropdown(openDropdown === name ? null : name);
+    };
+
+    const closeAll = () => {
+        setMobileMenuOpen(false);
+        setOpenDropdown(null);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (navRef.current && !navRef.current.contains(e.target as Node)) {
+                setOpenDropdown(null);
+            }
+        };
+        document.addEventListener("click", handleClickOutside);
+        return () => document.removeEventListener("click", handleClickOutside);
+    }, []);
+
     useEffect(() => {
         const fetchAlerts = async () => {
             try {
@@ -24,7 +44,6 @@ const Navbar = () => {
                 console.log(error);
             }
         };
-
         fetchAlerts();
         const interval = setInterval(fetchAlerts, 60000);
         return () => clearInterval(interval);
@@ -37,30 +56,65 @@ const Navbar = () => {
                 <span></span>
                 <span></span>
             </div>
-            <ul className={`navbar-list ${isMobileMenuOpen ? 'open' : ''}`}>
-                <li><Link to="/armario" onClick={toggleMobileMenu}>Armario</Link></li>
-                <li><Link to="/funcionarios" onClick={toggleMobileMenu}>Ver Funcionarios</Link></li>
-                <li><Link to="/cadastrarfuncionario" onClick={toggleMobileMenu}>Cadastrar Funcionario</Link></li>
-                <li><Link to="/funcionarios/new" onClick={toggleMobileMenu}>Novos Funcionarios</Link></li>
-                <li><Link to="/estoque" onClick={toggleMobileMenu}>Estoque</Link></li>
-                <li><Link to="/dashboard" onClick={toggleMobileMenu}>Dashboard</Link></li>
-                <li><Link to="/saidas" onClick={toggleMobileMenu}>Saidas</Link></li>
-                <li><Link to="/demanda" onClick={toggleMobileMenu}>Demanda</Link></li>
-                <li><Link to="/entradas" onClick={toggleMobileMenu}>Entradas</Link></li>
-                <li><Link to="/pedidos" onClick={toggleMobileMenu}>Pedidos</Link></li>
-                <li><Link to="/relatorios" onClick={toggleMobileMenu}>Relatórios</Link></li>
-                <li><Link to="/descartados" onClick={toggleMobileMenu}>Descartados</Link></li>
-                <li><Link to="/lavanderia" onClick={toggleMobileMenu}>Lavanderia</Link></li>
+            <ul ref={navRef} className={`navbar-list ${isMobileMenuOpen ? 'open' : ''}`}>
+                {/* Estoque */}
+                <li className="position-relative">
+                    <a href="#" onClick={(e) => { e.preventDefault(); toggleDropdown("estoque"); }}>
+                        Estoque ▾
+                    </a>
+                    {openDropdown === "estoque" && (
+                        <ul className="dropdown-menu show" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1050 }}>
+                            <li><Link to="/estoque" className="dropdown-item" onClick={closeAll}>Ver Estoque</Link></li>
+                            <li><Link to="/entradas" className="dropdown-item" onClick={closeAll}>Entradas</Link></li>
+                            <li><Link to="/saidas" className="dropdown-item" onClick={closeAll}>Saídas</Link></li>
+                            <li><Link to="/descartados" className="dropdown-item" onClick={closeAll}>Descartados</Link></li>
+                            <li><Link to="/lavanderia" className="dropdown-item" onClick={closeAll}>Lavanderia</Link></li>
+                        </ul>
+                    )}
+                </li>
+
+                {/* Pedidos */}
+                <li><Link to="/pedidos" onClick={closeAll}>Pedidos</Link></li>
+
+                {/* Inteligência */}
+                <li className="position-relative">
+                    <a href="#" onClick={(e) => { e.preventDefault(); toggleDropdown("inteligencia"); }}>
+                        Inteligência ▾
+                    </a>
+                    {openDropdown === "inteligencia" && (
+                        <ul className="dropdown-menu show" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1050 }}>
+                            <li><Link to="/relatorios" className="dropdown-item" onClick={closeAll}>Relatórios</Link></li>
+                            <li><Link to="/demanda" className="dropdown-item" onClick={closeAll}>Demanda</Link></li>
+                        </ul>
+                    )}
+                </li>
+
+                {/* Alertas (separado, fora do dropdown) */}
                 <li>
-                    <Link to="/sugestoes" onClick={toggleMobileMenu}>
-                        Alertas
-                        {alertCount > 0 && (
-                            <span className="badge bg-danger ms-1" style={{ fontSize: '0.7em' }}>
-                                {alertCount}
-                            </span>
-                        )}
+                    <Link to="/sugestoes" onClick={closeAll}>
+                        Alertas {alertCount > 0 && <span className="badge bg-danger ms-1" style={{ fontSize: '0.7em' }}>{alertCount}</span>}
                     </Link>
                 </li>
+
+                {/* Funcionários */}
+                <li className="position-relative">
+                    <a href="#" onClick={(e) => { e.preventDefault(); toggleDropdown("funcionarios"); }}>
+                        Funcionários ▾
+                    </a>
+                    {openDropdown === "funcionarios" && (
+                        <ul className="dropdown-menu show" style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1050 }}>
+                            <li><Link to="/funcionarios" className="dropdown-item" onClick={closeAll}>Ver Funcionários</Link></li>
+                            <li><Link to="/cadastrarfuncionario" className="dropdown-item" onClick={closeAll}>Cadastrar</Link></li>
+                            <li><Link to="/funcionarios/new" className="dropdown-item" onClick={closeAll}>Novos</Link></li>
+                        </ul>
+                    )}
+                </li>
+
+                {/* Armário */}
+                <li><Link to="/armario" onClick={closeAll}>Armário</Link></li>
+
+                {/* Dashboard */}
+                <li><Link to="/dashboard" onClick={closeAll}>Dashboard</Link></li>
             </ul>
             <div className="user-actions">
                 <span>Olá, {useAuth().user?.name}</span>

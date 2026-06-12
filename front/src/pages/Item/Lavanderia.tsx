@@ -33,7 +33,6 @@ const Lavanderia = () => {
     const [quantity, setQuantity] = useState<number>(1);
     const [sendDate, setSendDate] = useState(() => new Date().toISOString().split("T")[0]);
     const [expectedReturn, setExpectedReturn] = useState("");
-    const [laundryName, setLaundryName] = useState("");
     const [sentBy, setSentBy] = useState("");
     const [notes, setNotes] = useState("");
 
@@ -86,7 +85,6 @@ const Lavanderia = () => {
         }
     };
 
-    // Busca de item
     const handleItemSearch = (value: string) => {
         setItemSearch(value.toUpperCase());
         setSelectedItemId(null);
@@ -106,7 +104,6 @@ const Lavanderia = () => {
         setFilteredItems([]);
     };
 
-    // Enviar para lavanderia
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -125,7 +122,6 @@ const Lavanderia = () => {
                 quantity,
                 sendDate: new Date(sendDate).toISOString(),
                 expectedReturn: expectedReturn ? new Date(expectedReturn).toISOString() : null,
-                laundryName: laundryName || null,
                 sentBy: sentBy || null,
                 notes: notes || null,
             };
@@ -138,7 +134,6 @@ const Lavanderia = () => {
                 setItemSearch("");
                 setQuantity(1);
                 setExpectedReturn("");
-                setLaundryName("");
                 setSentBy("");
                 setNotes("");
                 fetchPendentes();
@@ -152,7 +147,6 @@ const Lavanderia = () => {
         }
     };
 
-    // Abrir modal de retorno
     const handleOpenReturn = (record: LaundryRecord) => {
         setReturnRecord(record);
         setReturnQty(record.quantity);
@@ -161,7 +155,6 @@ const Lavanderia = () => {
         setShowReturnModal(true);
     };
 
-    // Registrar retorno
     const handleReturn = async () => {
         if (!returnRecord) return;
 
@@ -288,7 +281,6 @@ const Lavanderia = () => {
                                             <th>Enviado em</th>
                                             <th>Retorno Previsto</th>
                                             <th>Dias</th>
-                                            <th>Lavanderia</th>
                                             <th>Status</th>
                                             <th>Ações</th>
                                         </tr>
@@ -307,7 +299,6 @@ const Lavanderia = () => {
                                                         : "—"}
                                                 </td>
                                                 <td>{r.diasNaLavanderia} dias</td>
-                                                <td>{r.laundryName || "—"}</td>
                                                 <td>
                                                     {r.atrasado ? (
                                                         <span className="badge bg-danger">Atrasado</span>
@@ -393,17 +384,7 @@ const Lavanderia = () => {
                                         onChange={(e) => setExpectedReturn(e.target.value)}
                                     />
                                 </div>
-                                <div className="col-md-4">
-                                    <label className="form-label">Lavanderia</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={laundryName}
-                                        onChange={(e) => setLaundryName(e.target.value)}
-                                        placeholder="Nome da lavanderia"
-                                    />
-                                </div>
-                                <div className="col-md-4">
+                                <div className="col-md-6">
                                     <label className="form-label">Enviado por</label>
                                     <input
                                         type="text"
@@ -413,7 +394,7 @@ const Lavanderia = () => {
                                         placeholder="Opcional"
                                     />
                                 </div>
-                                <div className="col-md-4">
+                                <div className="col-md-6">
                                     <label className="form-label">Observações</label>
                                     <input
                                         type="text"
@@ -452,7 +433,6 @@ const Lavanderia = () => {
                                             <th>Status</th>
                                             <th>Enviado em</th>
                                             <th>Retornou em</th>
-                                            <th>Lavanderia</th>
                                             <th>Enviado por</th>
                                             <th>Observações</th>
                                         </tr>
@@ -470,7 +450,6 @@ const Lavanderia = () => {
                                                 </td>
                                                 <td>{formatDate(r.sendDate)}</td>
                                                 <td>{r.returnDate ? formatDate(r.returnDate) : "—"}</td>
-                                                <td>{r.laundryName || "—"}</td>
                                                 <td>{r.sentBy || "—"}</td>
                                                 <td>{r.notes || "—"}</td>
                                             </tr>
@@ -502,9 +481,6 @@ const Lavanderia = () => {
                                 <p>
                                     <strong>Enviadas:</strong> {returnRecord.quantity} peças em{" "}
                                     {formatDate(returnRecord.sendDate)}
-                                </p>
-                                <p>
-                                    <strong>Lavanderia:</strong> {returnRecord.laundryName || "—"}
                                 </p>
 
                                 <div className="mb-3">
