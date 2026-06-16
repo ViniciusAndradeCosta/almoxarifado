@@ -30,6 +30,9 @@ const Descartados = () => {
     const [discardedBy, setDiscardedBy] = useState("");
     const [discardDate, setDiscardDate] = useState(() => new Date().toISOString().split("T")[0]);
 
+    // Estados para navegação por teclado
+    const [highlightedItemIndex, setHighlightedItemIndex] = useState(-1);
+
     // Filtros
     const [filtroMotivo, setFiltroMotivo] = useState("");
     const [filtroNome, setFiltroNome] = useState("");
@@ -63,6 +66,7 @@ const Descartados = () => {
     const handleItemSearch = (value: string) => {
         setItemSearch(value.toUpperCase());
         setSelectedItemId(null);
+        setHighlightedItemIndex(-1);
         if (value.length > 0) {
             const filtered = items.filter((item) =>
                 item.name.toLowerCase().includes(value.toLowerCase())
@@ -77,6 +81,7 @@ const Descartados = () => {
         setSelectedItemId(item.id!);
         setItemSearch(item.name);
         setFilteredItems([]);
+        setHighlightedItemIndex(-1);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -145,7 +150,7 @@ const Descartados = () => {
 
     const getReasonBadge = (reason: string) => {
         const badges: { [key: string]: string } = {
-            DESGASTE: "var(--text-secondary)", // Cor mais neutra
+            DESGASTE: "var(--text-secondary)",
             DANO: "var(--danger)",
             EXTRAVIO: "var(--warning)",
             VENCIDO: "var(--brand)",
@@ -170,11 +175,11 @@ const Descartados = () => {
 
     // === ESTILOS INLINE ===
     const cardStyle: React.CSSProperties = {
-        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 24
+        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 24, boxSizing: "border-box"
     };
     const headStyle: React.CSSProperties = {
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "14px 18px", 
-        borderBottom: "1px solid var(--border)", background: "var(--surface-2)"
+        borderBottom: "1px solid var(--border)", background: "var(--surface-2)", boxSizing: "border-box"
     };
     const lblStyle: React.CSSProperties = {
         fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", 
@@ -190,7 +195,7 @@ const Descartados = () => {
     }
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 40 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 40, boxSizing: "border-box" }}>
             
             {/* Header da Página */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: "1px solid var(--border)" }}>
@@ -228,32 +233,67 @@ const Descartados = () => {
                 <form onSubmit={handleSubmit} style={{ padding: "16px 18px" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr 1.5fr", gap: 14, marginBottom: 14 }}>
                         {/* Item */}
-                        <div style={{ position: "relative" }}>
+                        <div>
                             <label style={lblStyle}>Item</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={itemSearch}
-                                onChange={(e) => handleItemSearch(e.target.value)}
-                                placeholder="Buscar item..."
-                                autoComplete="off"
-                                style={{ fontSize: "0.82rem" }}
-                            />
-                            {filteredItems.length > 0 && (
-                                <ul className="list-group position-absolute w-100" style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto", marginTop: 4, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                                    {filteredItems.map((item) => (
-                                        <li
-                                            key={item.id}
-                                            className="list-group-item list-group-item-action"
-                                            style={{ cursor: "pointer", fontSize: "0.8rem", padding: "8px 12px" }}
-                                            onClick={() => handleSelectItem(item)}
-                                        >
-                                            <div style={{ fontWeight: 600 }}>{item.name}</div>
-                                            <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Estoque atual: {item.quantity}</div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                            <div style={{ position: "relative" }}>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={itemSearch}
+                                    onChange={(e) => handleItemSearch(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (filteredItems.length === 0) return;
+                                        if (e.key === "ArrowDown") {
+                                            e.preventDefault();
+                                            setHighlightedItemIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+                                        } else if (e.key === "ArrowUp") {
+                                            e.preventDefault();
+                                            setHighlightedItemIndex(prev => Math.max(prev - 1, 0));
+                                        } else if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            if (highlightedItemIndex >= 0) handleSelectItem(filteredItems[highlightedItemIndex]);
+                                        } else if (e.key === "Escape") {
+                                            setFilteredItems([]);
+                                            setHighlightedItemIndex(-1);
+                                        }
+                                    }}
+                                    placeholder="Buscar item..."
+                                    autoComplete="off"
+                                    style={{ paddingRight: "32px", fontSize: "0.82rem" }}
+                                />
+                                <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                                    <IconSearch size={14} />
+                                </div>
+                                {filteredItems.length > 0 && (
+                                    <ul style={{ 
+                                        position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
+                                        boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
+                                        borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
+                                        padding: 0, margin: "4px 0 0 0", listStyle: "none"
+                                    }}>
+                                        {filteredItems.map((item, index) => (
+                                            <li
+                                                key={item.id}
+                                                onMouseDown={(e) => { e.preventDefault(); handleSelectItem(item); }}
+                                                onMouseEnter={() => setHighlightedItemIndex(index)}
+                                                style={{ 
+                                                    cursor: "pointer", fontSize: "0.8rem", padding: "8px 12px",
+                                                    background: index === highlightedItemIndex ? "var(--brand)" : "transparent",
+                                                    color: index === highlightedItemIndex ? "#fff" : "var(--text-primary)",
+                                                    transition: "background 0.1s",
+                                                    borderBottom: index < filteredItems.length - 1 ? "1px solid var(--border)" : "none"
+                                                }}
+                                            >
+                                                <div style={{ fontWeight: 600 }}>{item.name}</div>
+                                                <div style={{ 
+                                                    fontSize: "0.7rem", 
+                                                    color: index === highlightedItemIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)" 
+                                                }}>Estoque atual: {item.quantity}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
                         </div>
                         {/* Quantidade */}
                         <div>
@@ -303,7 +343,6 @@ const Descartados = () => {
                         </div>
                     </div>
 
-                    {/* Botão alinhado à direita num footer */}
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20, paddingTop: 16, borderTop: "1px dashed var(--border)" }}>
                         <button type="submit" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 24px", borderRadius: 7, border: "none", background: "var(--danger)", color: "#fff", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>
                             Registrar Descarte
@@ -315,31 +354,31 @@ const Descartados = () => {
             {/* Histórico / Tabela */}
             <div style={cardStyle}>
                 
-                {/* Header da Tabela COM FILTROS EMBUTIDOS */}
-                <div style={{ ...headStyle, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>
+                {/* Cabeçalho da Tabela - COM LUPA DO LADO DIREITO */}
+                <div style={{ ...headStyle, flexWrap: "wrap", gap: 14, boxSizing: "border-box" }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.85rem", whiteSpace: "nowrap" }}>
                         Histórico de Descartes
                     </div>
                     
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <div style={{ position: "relative", width: 220 }}>
-                            <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
-                                <IconSearch size={13}/>
-                            </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ position: "relative", width: "240px", maxWidth: "100%" }}>
                             <input
                                 type="text"
-                                className="form-control"
+                                className="form-control form-control-sm"
                                 placeholder="Filtrar por item..."
                                 value={filtroNome}
                                 onChange={(e) => setFiltroNome(e.target.value)}
-                                style={{ paddingLeft: 30, fontSize: "0.75rem", height: 32 }}
+                                style={{ paddingRight: "30px", margin: 0 }} 
                             />
+                            <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none", zIndex: 2 }}>
+                                <IconSearch size={14}/>
+                            </div>
                         </div>
                         <select
-                            className="form-select"
+                            className="form-select form-select-sm"
                             value={filtroMotivo}
                             onChange={(e) => setFiltroMotivo(e.target.value)}
-                            style={{ fontSize: "0.75rem", width: 160, height: 32 }}
+                            style={{ width: "170px", margin: 0 }}
                         >
                             <option value="">Todos os motivos</option>
                             <option value="DESGASTE">Desgaste</option>
@@ -356,52 +395,54 @@ const Descartados = () => {
                         Nenhum descarte encontrado com estes filtros.
                     </div>
                 ) : (
-                    <table className="table table-hover" style={{ margin: 0 }}>
-                        <thead style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>
-                            <tr>
-                                <th style={{ paddingLeft: 18 }}>Item</th>
-                                <th>Tipo</th>
-                                <th>Qtd</th>
-                                <th>Motivo</th>
-                                <th>Data</th>
-                                <th>Responsável</th>
-                                <th>Observações</th>
-                                <th style={{ textAlign: "right", paddingRight: 18 }}>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredDiscards.map((d) => (
-                                <tr key={d.id}>
-                                    <td style={{ paddingLeft: 18, fontSize: "0.78rem", fontWeight: 600 }}>{d.item.name}</td>
-                                    <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{d.item.type}</td>
-                                    <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{d.quantity}</td>
-                                    <td>
-                                        <span style={{ 
-                                            fontSize: "0.65rem", fontWeight: 700, padding: "3px 8px", borderRadius: 4, 
-                                            background: `${getReasonBadge(d.reason)}20`, /* 20 é opacidade em hex */
-                                            color: getReasonBadge(d.reason) 
-                                        }}>
-                                            {getReasonLabel(d.reason).toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(d.discardDate)}</td>
-                                    <td style={{ fontSize: "0.74rem", color: "var(--text-secondary)" }}>{d.discardedBy || "—"}</td>
-                                    <td style={{ fontSize: "0.74rem", color: "var(--text-secondary)", maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={d.notes || ""}>
-                                        {d.notes || "—"}
-                                    </td>
-                                    <td style={{ textAlign: "right", paddingRight: 18 }}>
-                                        <button
-                                            onClick={() => handleDelete(d.id)}
-                                            style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", padding: 4 }}
-                                            title="Excluir Registro"
-                                        >
-                                            <IconTrash size={14} />
-                                        </button>
-                                    </td>
+                    <div style={{ overflowX: "auto" }}>
+                        <table className="table table-hover" style={{ margin: 0 }}>
+                            <thead style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                                <tr>
+                                    <th style={{ paddingLeft: 18 }}>Item</th>
+                                    <th>Tipo</th>
+                                    <th>Qtd</th>
+                                    <th>Motivo</th>
+                                    <th>Data</th>
+                                    <th>Responsável</th>
+                                    <th>Observações</th>
+                                    <th style={{ textAlign: "right", paddingRight: 18 }}>Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredDiscards.map((d) => (
+                                    <tr key={d.id}>
+                                        <td style={{ paddingLeft: 18, fontSize: "0.78rem", fontWeight: 600 }}>{d.item.name}</td>
+                                        <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{d.item.type}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{d.quantity}</td>
+                                        <td>
+                                            <span style={{ 
+                                                fontSize: "0.65rem", fontWeight: 700, padding: "3px 8px", borderRadius: 4, 
+                                                background: `${getReasonBadge(d.reason)}20`,
+                                                color: getReasonBadge(d.reason) 
+                                            }}>
+                                                {getReasonLabel(d.reason).toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(d.discardDate)}</td>
+                                        <td style={{ fontSize: "0.74rem", color: "var(--text-secondary)" }}>{d.discardedBy || "—"}</td>
+                                        <td style={{ fontSize: "0.74rem", color: "var(--text-secondary)", maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={d.notes || ""}>
+                                            {d.notes || "—"}
+                                        </td>
+                                        <td style={{ textAlign: "right", paddingRight: 18 }}>
+                                            <button
+                                                onClick={() => handleDelete(d.id)}
+                                                style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", padding: 4 }}
+                                                title="Excluir Registro"
+                                            >
+                                                <IconTrash size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

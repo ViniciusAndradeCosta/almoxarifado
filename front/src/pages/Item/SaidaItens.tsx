@@ -5,6 +5,7 @@ import { formatDate, getLocalDateISO } from "../../utils/dateFunctions";
 import { Employee } from "../../types/Employee";
 import { Item } from "../../types/Item";
 import { Withdrawal } from "../../types/Withdrawal";
+import { SearchDropdown } from "../../components/SearchDropdown";
 import {
   IconSearch, IconX, IconEdit, IconTrash, IconDownload,
   IconCheckCircle, IconPackage, IconUsers, IconArrowRight, IconCalendar
@@ -183,28 +184,24 @@ const SaidaItens = () => {
 
             <div>
               <label style={lbl}>Item</label>
-              <div style={{ position: "relative" }}>
-                <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
-                  <IconSearch size={13}/>
-                </div>
-                <input className="form-control" value={itemSearch}
-                  onChange={e => handleItemSearch(e.target.value)}
-                  placeholder="Buscar item pelo nome..." autoComplete="off"
-                  style={{ paddingRight: 32 }}/>
-                {filteredItems.length > 0 && (
-                  <ul className="list-group" style={{ position: "absolute", width: "100%", zIndex: 20, marginTop: 2 }}>
-                    {filteredItems.map(item => (
-                      <li key={item.id} className="list-group-item" onClick={() => selectItem(item)}
-                        style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700, color: (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--success)" }}>
-                          {item.quantity} un.
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <SearchDropdown
+					value={itemSearch}
+					onChange={handleItemSearch}
+					onSelect={selectItem}
+					items={filteredItems}
+					onClear={() => setFilteredItems([])}
+					placeholder="Buscar item pelo nome..."
+					getKey={i => i.id!}
+					renderItem={(item, highlighted) => (
+						<div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+						<span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
+						<span style={{
+							fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700,
+							color: highlighted ? "#fff" : (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--success)"
+						}}>{item.quantity} un.</span>
+						</div>
+					)}
+					/>
               {selectedItem && (
                 <div style={{ marginTop: 8, padding: "10px 14px", background: "var(--brand-subtle)", border: "1px solid var(--brand)", borderRadius: 7, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>

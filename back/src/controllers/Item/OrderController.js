@@ -1,5 +1,6 @@
 import prisma from "../../database/client.js";
 import { criarPedido, atualizarStatusPedido, registrarRecebimento } from "../../services/orderService.js";
+import { enviarEmailPedido } from "../../services/emailService.js";
 
 // POST /order — cria um novo pedido
 export async function createOrder(req, res) {
@@ -7,6 +8,12 @@ export async function createOrder(req, res) {
 
   try {
     const order = await criarPedido({ orderDate, supplier, notes, items });
+
+    // Envia email em background — não bloqueia a resposta ao frontend
+    enviarEmailPedido(order).catch(err =>
+      console.error("[Email] Falha ao enviar email do pedido:", err.message)
+    );
+
     return res.status(201).json({
       success: true,
       order,

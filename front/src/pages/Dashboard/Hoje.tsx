@@ -14,7 +14,7 @@ interface AlertItem {
 interface FeedItem {
   tipo: "entrada" | "saida"; descricao: string; quantidade: number; horario: string; ts: number;
 }
-interface Employee { id: number; name: string; role: string; department: string; company: string; }
+interface Employee { id: number; name: string; role: string; department: string; company: string; admissionDate: string; }
 interface Item { id: number; name: string; type: string; sector: string; size: string; quantity: number; }
 interface CartItem { item: Item; quantity: number; }
 
@@ -164,6 +164,10 @@ const Hoje = () => {
   const totalCart = cart.reduce((a, c) => a + c.quantity, 0);
   const cartError = cart.some(c => c.quantity > c.item.quantity);
 
+  // Filtrar os funcionários que entraram hoje
+  const hojeDateString = new Date().toDateString();
+  const novosHoje = employees.filter(e => e.admissionDate && new Date(e.admissionDate).toDateString() === hojeDateString);
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
@@ -210,226 +214,271 @@ const Hoje = () => {
       {/* Layout flex */}
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
 
-        {/* ═══ ESQUERDA — Entrega Rápida ═══ */}
+        {/* ═══ ESQUERDA — Coluna Fixa ═══ */}
         <div style={{
           width: 380, flexShrink: 0,
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 8, display: "flex", flexDirection: "column",
+          display: "flex", flexDirection: "column", gap: 20,
           position: "sticky", top: 16
         }}>
-          {/* Header */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "12px 16px", borderBottom: "1px solid var(--border)",
-            background: "var(--surface-2)", borderRadius: "8px 8px 0 0",
-            fontSize: "0.78rem", fontWeight: 700,
-          }}>
-            <IconZap size={15} color="var(--brand)" />
-            Entrega Rápida
-          </div>
+          
+          {/* Entrega Rápida */}
+          <div style={S.panel}>
+            {/* Header */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "12px 16px", borderBottom: "1px solid var(--border)",
+              background: "var(--surface-2)", borderRadius: "8px 8px 0 0",
+              fontSize: "0.78rem", fontWeight: 700,
+            }}>
+              <IconZap size={15} color="var(--brand)" />
+              Entrega Rápida
+            </div>
 
-          {/* Corpo */}
-          <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 18 }}>
+            {/* Corpo */}
+            <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 18 }}>
 
-            {/* Colaborador */}
-            <div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)" }}>
-                <IconUsers size={12} /> Colaborador
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  className="form-control"
-                  value={empSearch}
-                  onChange={e => handleEmpSearch(e.target.value)}
-                  onKeyDown={e => {
-                    if (filteredEmp.length === 0) return;
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setHighlightedEmpIndex(prev => Math.min(prev + 1, filteredEmp.length - 1));
-                    } else if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setHighlightedEmpIndex(prev => Math.max(prev - 1, 0));
-                    } else if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (highlightedEmpIndex >= 0) selectEmp(filteredEmp[highlightedEmpIndex]);
-                    } else if (e.key === "Escape") {
-                      setFilteredEmp([]);
-                      setHighlightedEmpIndex(-1);
-                    }
-                  }}
-                  placeholder="Buscar nome ou setor..."
-                  autoComplete="off"
-                  style={{ paddingRight: 36, fontSize: "0.82rem" }}
-                />
-                <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
-                  <IconSearch size={14} />
-                </div>
-                {/* DROPDOWN DE COLABORADOR COM FUNDO SÓLIDO */}
-                {filteredEmp.length > 0 && (
-                  <ul style={{ 
-                    position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
-                    borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
-                    padding: 0, margin: "4px 0 0 0", listStyle: "none"
-                  }}>
-                    {filteredEmp.map((emp, index) => (
-                      <li key={emp.id} 
-                        onMouseDown={(e) => { e.preventDefault(); selectEmp(emp); }} // Evita blur do input antes de clicar
-                        onMouseEnter={() => setHighlightedEmpIndex(index)}
-                        style={{ 
-                          cursor: "pointer", padding: "8px 12px",
-                          background: index === highlightedEmpIndex ? "var(--brand)" : "transparent",
-                          color: index === highlightedEmpIndex ? "#fff" : "var(--text-primary)",
-                          transition: "background 0.1s",
-                          borderBottom: index < filteredEmp.length - 1 ? "1px solid var(--border)" : "none"
-                        }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{emp.name}</div>
-                        <div style={{ 
-                          color: index === highlightedEmpIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)", 
-                          fontSize: "0.68rem" 
-                        }}>{emp.role} · {emp.department}</div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              {selectedEmp && (
-                <div style={{
-                  padding: "10px 12px", marginTop: 10,
-                  background: "var(--brand-subtle)", border: "1px solid var(--brand)",
-                  borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text-primary)" }}>{selectedEmp.name}</div>
-                    <div style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>{selectedEmp.department}</div>
+              {/* Colaborador */}
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                  <IconUsers size={12} /> Colaborador
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="form-control"
+                    value={empSearch}
+                    onChange={e => handleEmpSearch(e.target.value)}
+                    onKeyDown={e => {
+                      if (filteredEmp.length === 0) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setHighlightedEmpIndex(prev => Math.min(prev + 1, filteredEmp.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setHighlightedEmpIndex(prev => Math.max(prev - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (highlightedEmpIndex >= 0) selectEmp(filteredEmp[highlightedEmpIndex]);
+                      } else if (e.key === "Escape") {
+                        setFilteredEmp([]);
+                        setHighlightedEmpIndex(-1);
+                      }
+                    }}
+                    placeholder="Buscar nome ou setor..."
+                    autoComplete="off"
+                    style={{ paddingRight: 36, fontSize: "0.82rem" }}
+                  />
+                  <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                    <IconSearch size={14} />
                   </div>
-                  <button onClick={() => { setSelectedEmp(null); setEmpSearch(""); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
-                    <IconX size={14} />
-                  </button>
+                  {/* DROPDOWN DE COLABORADOR */}
+                  {filteredEmp.length > 0 && (
+                    <ul style={{ 
+                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
+                      borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
+                      padding: 0, margin: "4px 0 0 0", listStyle: "none"
+                    }}>
+                      {filteredEmp.map((emp, index) => (
+                        <li key={emp.id} 
+                          onMouseDown={(e) => { e.preventDefault(); selectEmp(emp); }} 
+                          onMouseEnter={() => setHighlightedEmpIndex(index)}
+                          style={{ 
+                            cursor: "pointer", padding: "8px 12px",
+                            background: index === highlightedEmpIndex ? "var(--brand)" : "transparent",
+                            color: index === highlightedEmpIndex ? "#fff" : "var(--text-primary)",
+                            transition: "background 0.1s",
+                            borderBottom: index < filteredEmp.length - 1 ? "1px solid var(--border)" : "none"
+                          }}>
+                          <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{emp.name}</div>
+                          <div style={{ 
+                            color: index === highlightedEmpIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)", 
+                            fontSize: "0.68rem" 
+                          }}>{emp.role} · {emp.department}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              )}
-            </div>
-
-            {/* Itens */}
-            <div>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)" }}>
-                <IconPackage size={12} /> Itens
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  className="form-control"
-                  value={itemSearch}
-                  onChange={e => handleItemSearch(e.target.value)}
-                  onKeyDown={e => {
-                    if (filteredItems.length === 0) return;
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setHighlightedItemIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
-                    } else if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setHighlightedItemIndex(prev => Math.max(prev - 1, 0));
-                    } else if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (highlightedItemIndex >= 0) addToCart(filteredItems[highlightedItemIndex]);
-                    } else if (e.key === "Escape") {
-                      setFilteredItems([]);
-                      setHighlightedItemIndex(-1);
-                    }
-                  }}
-                  placeholder="Buscar item..."
-                  autoComplete="off"
-                  style={{ paddingRight: 36, fontSize: "0.82rem" }}
-                />
-                <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
-                  <IconSearch size={14} />
-                </div>
-                {/* DROPDOWN DE ITENS COM FUNDO SÓLIDO */}
-                {filteredItems.length > 0 && (
-                  <ul style={{ 
-                    position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
-                    borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
-                    padding: 0, margin: "4px 0 0 0", listStyle: "none"
+                {selectedEmp && (
+                  <div style={{
+                    padding: "10px 12px", marginTop: 10,
+                    background: "var(--brand-subtle)", border: "1px solid var(--brand)",
+                    borderRadius: 6, display: "flex", justifyContent: "space-between", alignItems: "center",
                   }}>
-                    {filteredItems.map((item, index) => (
-                      <li key={item.id} 
-                        onMouseDown={(e) => { e.preventDefault(); addToCart(item); }}
-                        onMouseEnter={() => setHighlightedItemIndex(index)}
-                        style={{ 
-                          cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px",
-                          background: index === highlightedItemIndex ? "var(--brand)" : "transparent",
-                          color: index === highlightedItemIndex ? "#fff" : "var(--text-primary)",
-                          transition: "background 0.1s",
-                          borderBottom: index < filteredItems.length - 1 ? "1px solid var(--border)" : "none"
-                        }}>
-                        <span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
-                        <span style={{
-                          fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700,
-                          color: index === highlightedItemIndex ? "rgba(255,255,255,0.9)" : (item.quantity === 0 ? "var(--danger)" : item.quantity <= 10 ? "var(--warning)" : "var(--success)")
-                        }}>
-                          {item.quantity} un.
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {/* Carrinho */}
-            {cart.length > 0 && (
-              <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
-                {cart.map(c => (
-                  <div key={c.item.id} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "10px 12px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)"
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: "0.78rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {c.item.name}
-                      </div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
-                        Disp.: {c.item.quantity}
-                        {c.quantity > c.item.quantity && (
-                          <span style={{ color: "var(--danger)", fontWeight: 700, marginLeft: 6 }}>Excede</span>
-                        )}
-                      </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.8rem", color: "var(--text-primary)" }}>{selectedEmp.name}</div>
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>{selectedEmp.department}</div>
                     </div>
-                    <input
-                      type="number"
-                      value={c.quantity || ""}
-                      onChange={e => updateQty(c.item.id, e.target.value === "" ? 0 : Number(e.target.value))}
-                      min={1} max={c.item.quantity}
-                      style={{
-                        width: 48, textAlign: "center",
-                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "0.82rem",
-                        padding: "4px 3px", borderRadius: 4,
-                        border: `1px solid ${c.quantity > c.item.quantity ? "var(--danger)" : "var(--input-border)"}`,
-                        background: "var(--input-bg)", color: "var(--text-primary)",
-                      }}
-                    />
-                    <button onClick={() => removeCart(c.item.id)}
+                    <button onClick={() => { setSelectedEmp(null); setEmpSearch(""); }}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
                       <IconX size={14} />
                     </button>
                   </div>
+                )}
+              </div>
+
+              {/* Itens */}
+              <div>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                  <IconPackage size={12} /> Itens
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="form-control"
+                    value={itemSearch}
+                    onChange={e => handleItemSearch(e.target.value)}
+                    onKeyDown={e => {
+                      if (filteredItems.length === 0) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setHighlightedItemIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setHighlightedItemIndex(prev => Math.max(prev - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (highlightedItemIndex >= 0) addToCart(filteredItems[highlightedItemIndex]);
+                      } else if (e.key === "Escape") {
+                        setFilteredItems([]);
+                        setHighlightedItemIndex(-1);
+                      }
+                    }}
+                    placeholder="Buscar item..."
+                    autoComplete="off"
+                    style={{ paddingRight: 36, fontSize: "0.82rem" }}
+                  />
+                  <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
+                    <IconSearch size={14} />
+                  </div>
+                  {/* DROPDOWN DE ITENS */}
+                  {filteredItems.length > 0 && (
+                    <ul style={{ 
+                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
+                      borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
+                      padding: 0, margin: "4px 0 0 0", listStyle: "none"
+                    }}>
+                      {filteredItems.map((item, index) => (
+                        <li key={item.id} 
+                          onMouseDown={(e) => { e.preventDefault(); addToCart(item); }}
+                          onMouseEnter={() => setHighlightedItemIndex(index)}
+                          style={{ 
+                            cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px",
+                            background: index === highlightedItemIndex ? "var(--brand)" : "transparent",
+                            color: index === highlightedItemIndex ? "#fff" : "var(--text-primary)",
+                            transition: "background 0.1s",
+                            borderBottom: index < filteredItems.length - 1 ? "1px solid var(--border)" : "none"
+                          }}>
+                          <span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
+                          <span style={{
+                            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700,
+                            color: index === highlightedItemIndex ? "rgba(255,255,255,0.9)" : (item.quantity === 0 ? "var(--danger)" : item.quantity <= 10 ? "var(--warning)" : "var(--success)")
+                          }}>
+                            {item.quantity} un.
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Carrinho */}
+              {cart.length > 0 && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden" }}>
+                  {cart.map(c => (
+                    <div key={c.item.id} style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "10px 12px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)"
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.78rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.item.name}
+                        </div>
+                        <div style={{ fontSize: "0.68rem", color: "var(--text-muted)" }}>
+                          Disp.: {c.item.quantity}
+                          {c.quantity > c.item.quantity && (
+                            <span style={{ color: "var(--danger)", fontWeight: 700, marginLeft: 6 }}>Excede</span>
+                          )}
+                        </div>
+                      </div>
+                      <input
+                        type="number"
+                        value={c.quantity || ""}
+                        onChange={e => updateQty(c.item.id, e.target.value === "" ? 0 : Number(e.target.value))}
+                        min={1} max={c.item.quantity}
+                        style={{
+                          width: 48, textAlign: "center",
+                          fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "0.82rem",
+                          padding: "4px 3px", borderRadius: 4,
+                          border: `1px solid ${c.quantity > c.item.quantity ? "var(--danger)" : "var(--input-border)"}`,
+                          background: "var(--input-bg)", color: "var(--text-primary)",
+                        }}
+                      />
+                      <button onClick={() => removeCart(c.item.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", padding: 4 }}>
+                        <IconX size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Botão */}
+              <button
+                className="btn btn-primary w-100"
+                onClick={confirmEntrega}
+                disabled={sending || cart.length === 0 || !selectedEmp || cartError}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px", fontWeight: 700, marginTop: 4 }}
+              >
+                {sending
+                  ? <><span className="spinner-border spinner-border-sm" /> Registrando...</>
+                  : <><IconCheckCircle size={15} /> {cart.length > 0 ? `Confirmar Entrega (${totalCart})` : "Confirmar Entrega"}</>
+                }
+              </button>
+            </div>
+          </div>
+
+          {/* Painel de Novos Colaboradores */}
+          <div style={S.panel}>
+            <div style={S.panelHead}>
+              <IconUsers size={15} color="var(--success)" />
+              Novos Colaboradores Hoje
+            </div>
+            {novosHoje.length === 0 ? (
+              <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                Nenhuma admissão registrada hoje.
+              </div>
+            ) : (
+              <div>
+                {novosHoje.slice(0, 5).map((emp, i) => (
+                  <div key={emp.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 16px",
+                    borderBottom: i < Math.min(novosHoje.length, 5) - 1 ? "1px solid var(--border)" : "none"
+                  }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--success-subtle)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, flexShrink: 0 }}>
+                      {emp.name.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {emp.name}
+                      </div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {emp.role} · {emp.department}
+                      </div>
+                    </div>
+                    <Link to={`/funcionarios`} style={{ 
+                      fontSize: "0.65rem", fontWeight: 800, color: "var(--brand)", 
+                      background: "var(--brand-subtle)", padding: "4px 8px", borderRadius: 4, 
+                      textDecoration: "none", flexShrink: 0 
+                    }}>
+                      VER
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}
-
-            {/* Botão */}
-            <button
-              className="btn btn-primary w-100"
-              onClick={confirmEntrega}
-              disabled={sending || cart.length === 0 || !selectedEmp || cartError}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px", fontWeight: 700, marginTop: 4 }}
-            >
-              {sending
-                ? <><span className="spinner-border spinner-border-sm" /> Registrando...</>
-                : <><IconCheckCircle size={15} /> {cart.length > 0 ? `Confirmar Entrega (${totalCart})` : "Confirmar Entrega"}</>
-              }
-            </button>
           </div>
         </div>
 

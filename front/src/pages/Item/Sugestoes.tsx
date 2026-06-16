@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/useApi";
+import { IconSearch, IconAlertTriangle, IconCheckCircle } from "../../components/Icons";
 
 interface Sugestao {
     itemId: number;
@@ -82,15 +83,15 @@ const Sugestoes = () => {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        const badges: { [key: string]: string } = {
-            SEM_ESTOQUE: "bg-danger",
-            ABAIXO_MARGEM: "bg-warning text-dark",
-            ATENCAO: "bg-info text-dark",
-            ESTOQUE_BAIXO: "bg-secondary",
-            OK: "bg-success",
+    const getStatusColor = (status: string) => {
+        const colors: { [key: string]: string } = {
+            SEM_ESTOQUE: "var(--danger)",
+            ABAIXO_MARGEM: "var(--warning)",
+            ATENCAO: "var(--info)",
+            ESTOQUE_BAIXO: "var(--text-secondary)",
+            OK: "var(--success)",
         };
-        return badges[status] || "bg-secondary";
+        return colors[status] || "var(--text-secondary)";
     };
 
     const getStatusLabel = (status: string) => {
@@ -102,15 +103,6 @@ const Sugestoes = () => {
             OK: "OK",
         };
         return labels[status] || status;
-    };
-
-    const getNivelBadge = (nivel: string) => {
-        const badges: { [key: string]: string } = {
-            CRITICO: "bg-danger",
-            ALERTA: "bg-warning text-dark",
-            ATENCAO: "bg-info text-dark",
-        };
-        return badges[nivel] || "bg-secondary";
     };
 
     // Filtrar sugestões
@@ -161,110 +153,136 @@ const Sugestoes = () => {
         }
     };
 
+    // === ESTILOS INLINE ===
+    const cardStyle: React.CSSProperties = {
+        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 24, boxSizing: "border-box"
+    };
+    const headStyle: React.CSSProperties = {
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "14px 18px", 
+        borderBottom: "1px solid var(--border)", background: "var(--surface-2)", boxSizing: "border-box"
+    };
+    const lblStyle: React.CSSProperties = {
+        fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", 
+        color: "var(--text-secondary)", marginBottom: 5, display: "block"
+    };
+
     if (loading) {
         return (
-            <div className="container d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
-                <div className="text-center">
-                    <div className="spinner-border text-primary mb-3" role="status">
-                        <span className="visually-hidden">Carregando...</span>
-                    </div>
-                    <h4>Carregando dados...</h4>
-                </div>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+                <div className="spinner-border text-primary" role="status" />
             </div>
         );
     }
 
     return (
-        <div className="container mt-3">
-            <h1 className="text-center mb-4">Sugestões e Alertas</h1>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 40, boxSizing: "border-box" }}>
+            
+            {/* Header da Página */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: "1px solid var(--border)" }}>
+                <div>
+                    <h1 style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.025em", margin: "0 0 2px" }}>Sugestões e Alertas</h1>
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.73rem", margin: 0 }}>
+                        Gerencie a saúde do seu estoque e as sugestões de reposição.
+                    </p>
+                </div>
+            </div>
 
             {/* Cards resumo de alertas */}
             {alertasData && (
-                <div className="row g-3 mb-4">
-                    <div className="col-md-3">
-                        <div className="card text-center border-danger">
-                            <div className="card-body">
-                                <h6 className="text-muted">Crítico</h6>
-                                <h3 className="text-danger">{alertasData.contagem.critico}</h3>
-                            </div>
-                        </div>
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 8 }}>
+                    <div style={{ ...cardStyle, flex: 1, minWidth: 120, marginBottom: 0, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Crítico</span>
+                        <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--danger)", lineHeight: 1.2 }}>{alertasData.contagem.critico}</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card text-center border-warning">
-                            <div className="card-body">
-                                <h6 className="text-muted">Alerta</h6>
-                                <h3 className="text-warning">{alertasData.contagem.alerta}</h3>
-                            </div>
-                        </div>
+                    <div style={{ ...cardStyle, flex: 1, minWidth: 120, marginBottom: 0, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Alerta</span>
+                        <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--warning)", lineHeight: 1.2 }}>{alertasData.contagem.alerta}</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card text-center border-info">
-                            <div className="card-body">
-                                <h6 className="text-muted">Atenção</h6>
-                                <h3 className="text-info">{alertasData.contagem.atencao}</h3>
-                            </div>
-                        </div>
+                    <div style={{ ...cardStyle, flex: 1, minWidth: 120, marginBottom: 0, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Atenção</span>
+                        <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--info)", lineHeight: 1.2 }}>{alertasData.contagem.atencao}</span>
                     </div>
-                    <div className="col-md-3">
-                        <div className="card text-center">
-                            <div className="card-body">
-                                <h6 className="text-muted">Total Alertas</h6>
-                                <h3>{alertasData.totalAlertas}</h3>
-                            </div>
-                        </div>
+                    <div style={{ ...cardStyle, flex: 1, minWidth: 140, marginBottom: 0, padding: "16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Alertas</span>
+                        <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>{alertasData.totalAlertas}</span>
                     </div>
                 </div>
             )}
 
-            {/* Abas */}
-            <ul className="nav nav-tabs mb-4">
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "sugestoes" ? "active" : ""}`}
-                        onClick={() => setActiveTab("sugestoes")}
-                    >
-                        Sugestões de Pedido
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "alertas" ? "active" : ""}`}
-                        onClick={() => setActiveTab("alertas")}
-                    >
-                        Alertas Detalhados
-                        {alertasData && alertasData.totalAlertas > 0 && (
-                            <span className="badge bg-danger ms-2">{alertasData.totalAlertas}</span>
-                        )}
-                    </button>
-                </li>
-                <li className="nav-item">
-                    <button
-                        className={`nav-link ${activeTab === "margem" ? "active" : ""}`}
-                        onClick={() => setActiveTab("margem")}
-                    >
-                        Configurar Margem
-                    </button>
-                </li>
-            </ul>
+            {/* Abas Personalizadas */}
+            <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
+                <button
+                    onClick={() => setActiveTab("sugestoes")}
+                    style={{
+                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
+                        background: activeTab === "sugestoes" ? "var(--brand)" : "var(--surface)",
+                        color: activeTab === "sugestoes" ? "#fff" : "var(--text-secondary)",
+                        border: activeTab !== "sugestoes" ? "1px solid var(--border)" : "1px solid var(--brand)"
+                    }}
+                >
+                    Sugestões de Pedido
+                </button>
+                <button
+                    onClick={() => setActiveTab("alertas")}
+                    style={{
+                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
+                        background: activeTab === "alertas" ? "var(--brand)" : "var(--surface)",
+                        color: activeTab === "alertas" ? "#fff" : "var(--text-secondary)",
+                        border: activeTab !== "alertas" ? "1px solid var(--border)" : "1px solid var(--brand)"
+                    }}
+                >
+                    Alertas Detalhados
+                    {alertasData && alertasData.totalAlertas > 0 && (
+                        <span style={{
+                            background: activeTab === "alertas" ? "#fff" : "var(--danger)",
+                            color: activeTab === "alertas" ? "var(--brand)" : "#fff",
+                            padding: "2px 6px", borderRadius: 10, fontSize: "0.65rem", fontWeight: 800
+                        }}>
+                            {alertasData.totalAlertas}
+                        </span>
+                    )}
+                </button>
+                <button
+                    onClick={() => setActiveTab("margem")}
+                    style={{
+                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
+                        background: activeTab === "margem" ? "var(--brand)" : "var(--surface)",
+                        color: activeTab === "margem" ? "#fff" : "var(--text-secondary)",
+                        border: activeTab !== "margem" ? "1px solid var(--border)" : "1px solid var(--brand)"
+                    }}
+                >
+                    Configurar Margem
+                </button>
+            </div>
 
             {/* === ABA: SUGESTÕES === */}
             {activeTab === "sugestoes" && (
-                <>
-                    <div className="row g-3 mb-3">
-                        <div className="col-md-4">
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Filtrar por nome..."
-                                value={filtroNome}
-                                onChange={(e) => setFiltroNome(e.target.value)}
-                            />
+                <div style={cardStyle}>
+                    {/* Header da Tabela com Filtros */}
+                    <div style={{ ...headStyle, flexWrap: "wrap", gap: 14 }}>
+                        <div style={{ fontWeight: 800, fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+                            Tabela de Sugestões <span style={{ color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem", marginLeft: 4 }}>({filteredSugestoes.length} itens)</span>
                         </div>
-                        <div className="col-md-3">
+                        
+                        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                            <div style={{ position: "relative", width: "220px", maxWidth: "100%" }}>
+                                <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Filtrar por nome..."
+                                    value={filtroNome}
+                                    onChange={(e) => setFiltroNome(e.target.value)}
+                                    style={{ paddingRight: "30px", margin: 0, fontSize: "0.78rem" }} 
+                                />
+                                <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none", zIndex: 2 }}>
+                                    <IconSearch size={14}/>
+                                </div>
+                            </div>
                             <select
-                                className="form-select"
+                                className="form-select form-select-sm"
                                 value={filtroStatus}
                                 onChange={(e) => setFiltroStatus(e.target.value)}
+                                style={{ width: "160px", margin: 0, fontSize: "0.78rem" }}
                             >
                                 <option value="">Todos os status</option>
                                 <option value="SEM_ESTOQUE">Sem Estoque</option>
@@ -273,85 +291,89 @@ const Sugestoes = () => {
                                 <option value="ESTOQUE_BAIXO">Estoque Baixo</option>
                                 <option value="OK">OK</option>
                             </select>
-                        </div>
-                        <div className="col-md-3">
-                            <button className="btn btn-outline-primary" onClick={fetchSugestoes}>
+                            <button 
+                                onClick={fetchSugestoes}
+                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", height: 31 }}
+                            >
                                 Atualizar
                             </button>
                         </div>
                     </div>
 
-                    <div className="card">
-                        <div className="card-body">
-                            <h6 className="card-title">
-                                {filteredSugestoes.length} {filteredSugestoes.length === 1 ? "item" : "itens"}
-                            </h6>
-                            <div className="table-responsive">
-                                <table className="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Item</th>
-                                            <th>Setor</th>
-                                            <th>Estoque</th>
-                                            <th>Margem</th>
-                                            <th>Média/Mês</th>
-                                            <th>Estoque Alvo</th>
-                                            <th>Sugestão</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredSugestoes.map((s) => (
-                                            <tr key={s.itemId}>
-                                                <td>{s.itemId}</td>
-                                                <td>{s.itemName}</td>
-                                                <td>{s.itemSector}</td>
-                                                <td>{s.estoqueAtual}</td>
-                                                <td>{s.margemSeguranca}</td>
-                                                <td>{s.mediaMensalSaida}</td>
-                                                <td>{s.estoqueAlvo}</td>
-                                                <td className={s.sugestaoQuantidade > 0 ? "fw-bold text-danger" : ""}>
-                                                    {s.sugestaoQuantidade > 0 ? s.sugestaoQuantidade : "—"}
-                                                </td>
-                                                <td>
-                                                    <span className={`badge ${getStatusBadge(s.status)}`}>
-                                                        {getStatusLabel(s.status)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div style={{ overflowX: "auto" }}>
+                        <table className="table table-hover" style={{ margin: 0 }}>
+                            <thead style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                                <tr>
+                                    <th style={{ paddingLeft: 18 }}>Item</th>
+                                    <th>Setor</th>
+                                    <th>Estoque</th>
+                                    <th>Margem</th>
+                                    <th>Média/Mês</th>
+                                    <th>Estoque Alvo</th>
+                                    <th>Sugestão</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredSugestoes.map((s) => (
+                                    <tr key={s.itemId}>
+                                        <td style={{ paddingLeft: 18, fontSize: "0.78rem", fontWeight: 600 }}>{s.itemName}</td>
+                                        <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemSector}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: s.estoqueAtual === 0 ? "var(--danger)" : "var(--text-primary)" }}>{s.estoqueAtual}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.margemSeguranca}</td>
+                                        <td style={{ fontSize: "0.74rem", fontFamily: "'JetBrains Mono', monospace", color: "var(--text-secondary)" }}>{s.mediaMensalSaida.toFixed(1)}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.estoqueAlvo}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: s.sugestaoQuantidade > 0 ? "var(--brand)" : "var(--text-muted)" }}>
+                                            {s.sugestaoQuantidade > 0 ? `+${s.sugestaoQuantidade}` : "—"}
+                                        </td>
+                                        <td>
+                                            <span style={{ 
+                                                fontSize: "0.65rem", fontWeight: 800, padding: "3px 8px", borderRadius: 4, 
+                                                background: `${getStatusColor(s.status)}20`,
+                                                color: getStatusColor(s.status) 
+                                            }}>
+                                                {getStatusLabel(s.status).toUpperCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filteredSugestoes.length === 0 && (
+                                    <tr>
+                                        <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                                            Nenhuma sugestão encontrada com estes filtros.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                </>
+                </div>
             )}
 
             {/* === ABA: ALERTAS DETALHADOS === */}
             {activeTab === "alertas" && alertasData && (
-                <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     {alertasData.totalAlertas === 0 ? (
-                        <div className="card">
-                            <div className="card-body text-center">
-                                <h5 className="text-success">Nenhum alerta ativo. Estoque saudável!</h5>
-                            </div>
+                        <div style={{ ...cardStyle, padding: 40, textAlign: "center", color: "var(--success)" }}>
+                            <IconCheckCircle size={32} />
+                            <h5 style={{ marginTop: 12, fontWeight: 700 }}>Nenhum alerta ativo. Estoque saudável!</h5>
                         </div>
                     ) : (
                         <>
                             {alertasData.alertas.critico.length > 0 && (
-                                <div className="card mb-3 border-danger">
-                                    <div className="card-header bg-danger text-white">
-                                        🔴 Crítico — Estoque Zerado ({alertasData.alertas.critico.length})
+                                <div style={{ ...cardStyle, borderLeft: "4px solid var(--danger)", marginBottom: 0 }}>
+                                    <div style={{ ...headStyle, background: "var(--surface)", borderBottom: "1px solid var(--border)", color: "var(--danger)" }}>
+                                        <div style={{ fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                            <IconAlertTriangle size={15} /> Crítico — Estoque Zerado ({alertasData.alertas.critico.length})
+                                        </div>
                                     </div>
-                                    <div className="card-body">
-                                        {alertasData.alertas.critico.map((a) => (
-                                            <div key={a.itemId} className="d-flex justify-content-between align-items-center border-bottom py-2">
+                                    <div style={{ padding: "0 18px" }}>
+                                        {alertasData.alertas.critico.map((a, i) => (
+                                            <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.critico.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong>{a.itemName}</strong> — {a.itemType} — {a.itemSector}
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
                                                 </div>
-                                                <span className="badge bg-danger">Estoque: {a.estoqueAtual}</span>
+                                                <span style={{ fontSize: "0.7rem", fontWeight: 800, background: "var(--danger)", color: "#fff", padding: "3px 8px", borderRadius: 4 }}>Estoque: {a.estoqueAtual}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -359,22 +381,22 @@ const Sugestoes = () => {
                             )}
 
                             {alertasData.alertas.alerta.length > 0 && (
-                                <div className="card mb-3 border-warning">
-                                    <div className="card-header bg-warning text-dark">
-                                        🟠 Alerta — Abaixo da Margem ({alertasData.alertas.alerta.length})
+                                <div style={{ ...cardStyle, borderLeft: "4px solid var(--warning)", marginBottom: 0 }}>
+                                    <div style={{ ...headStyle, background: "var(--surface)", borderBottom: "1px solid var(--border)", color: "var(--warning)" }}>
+                                        <div style={{ fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                            <IconAlertTriangle size={15} /> Alerta — Abaixo da Margem ({alertasData.alertas.alerta.length})
+                                        </div>
                                     </div>
-                                    <div className="card-body">
-                                        {alertasData.alertas.alerta.map((a) => (
-                                            <div key={a.itemId} className="d-flex justify-content-between align-items-center border-bottom py-2">
+                                    <div style={{ padding: "0 18px" }}>
+                                        {alertasData.alertas.alerta.map((a, i) => (
+                                            <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.alerta.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong>{a.itemName}</strong> — {a.itemType} — {a.itemSector}
-                                                    <br />
-                                                    <small className="text-muted">{a.mensagem}</small>
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
+                                                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{a.mensagem}</div>
                                                 </div>
-                                                <div className="text-end">
-                                                    <span className="badge bg-warning text-dark">Estoque: {a.estoqueAtual}/{a.margemSeguranca}</span>
-                                                    <br />
-                                                    <small>Faltam: {a.deficit}</small>
+                                                <div style={{ textAlign: "right" }}>
+                                                    <span style={{ fontSize: "0.7rem", fontWeight: 800, background: "var(--warning)", color: "#000", padding: "3px 8px", borderRadius: 4 }}>Estoque: {a.estoqueAtual}/{a.margemSeguranca}</span>
+                                                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: 4, fontWeight: 700 }}>Faltam: {a.deficit}</div>
                                                 </div>
                                             </div>
                                         ))}
@@ -383,20 +405,21 @@ const Sugestoes = () => {
                             )}
 
                             {alertasData.alertas.atencao.length > 0 && (
-                                <div className="card mb-3 border-info">
-                                    <div className="card-header bg-info text-dark">
-                                        🟡 Atenção — Próximo da Margem ({alertasData.alertas.atencao.length})
+                                <div style={{ ...cardStyle, borderLeft: "4px solid var(--info)", marginBottom: 0 }}>
+                                    <div style={{ ...headStyle, background: "var(--surface)", borderBottom: "1px solid var(--border)", color: "var(--info)" }}>
+                                        <div style={{ fontWeight: 800, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: 6 }}>
+                                            <IconAlertTriangle size={15} /> Atenção — Próximo da Margem ({alertasData.alertas.atencao.length})
+                                        </div>
                                     </div>
-                                    <div className="card-body">
-                                        {alertasData.alertas.atencao.map((a) => (
-                                            <div key={a.itemId} className="d-flex justify-content-between align-items-center border-bottom py-2">
+                                    <div style={{ padding: "0 18px" }}>
+                                        {alertasData.alertas.atencao.map((a, i) => (
+                                            <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.atencao.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong>{a.itemName}</strong> — {a.itemType} — {a.itemSector}
-                                                    <br />
-                                                    <small className="text-muted">{a.mensagem}</small>
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
+                                                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{a.mensagem}</div>
                                                 </div>
-                                                <div className="text-end">
-                                                    <span className="badge bg-info text-dark">Estoque: {a.estoqueAtual}/{a.margemSeguranca}</span>
+                                                <div style={{ textAlign: "right" }}>
+                                                    <span style={{ fontSize: "0.7rem", fontWeight: 800, background: "var(--info)", color: "#000", padding: "3px 8px", borderRadius: 4 }}>Estoque: {a.estoqueAtual}/{a.margemSeguranca}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -405,122 +428,97 @@ const Sugestoes = () => {
                             )}
                         </>
                     )}
-                </>
+                </div>
             )}
 
             {/* === ABA: CONFIGURAR MARGEM === */}
             {activeTab === "margem" && (
-                <>
-                    <div className="row g-4">
-                        <div className="col-md-6">
-                            <div className="card">
-                                <div className="card-body">
-                                    <h5 className="card-title">Margem Individual</h5>
-                                    <p className="text-muted">Defina a margem de segurança para um item específico.</p>
-                                    <div className="row g-2 align-items-end">
-                                        <div className="col-4">
-                                            <label className="form-label">ID do Item</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                value={margemItemId}
-                                                onChange={(e) => setMargemItemId(e.target.value)}
-                                                placeholder="Ex: 1"
-                                            />
-                                        </div>
-                                        <div className="col-4">
-                                            <label className="form-label">Margem</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                value={margemValor}
-                                                onChange={(e) => setMargemValor(Number(e.target.value))}
-                                                min={0}
-                                            />
-                                        </div>
-                                        <div className="col-4">
-                                            <button className="btn btn-primary w-100" onClick={handleUpdateMargem}>
-                                                Salvar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+                    
+                    {/* Margem Individual */}
+                    <div style={cardStyle}>
+                        <div style={headStyle}>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>Margem Individual</div>
                         </div>
-                        <div className="col-md-6">
-                            <div className="card">
-                                <div className="card-body">
-                                    <h5 className="card-title">Margem por Setor</h5>
-                                    <p className="text-muted">Defina a margem de segurança para todos os itens de um setor.</p>
-                                    <div className="row g-2 align-items-end">
-                                        <div className="col-4">
-                                            <label className="form-label">Setor</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                value={margemSetor}
-                                                onChange={(e) => setMargemSetor(e.target.value.toUpperCase())}
-                                                placeholder="Ex: LIMPEZA"
-                                            />
-                                        </div>
-                                        <div className="col-4">
-                                            <label className="form-label">Margem</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                value={margemLoteValor}
-                                                onChange={(e) => setMargemLoteValor(Number(e.target.value))}
-                                                min={0}
-                                            />
-                                        </div>
-                                        <div className="col-4">
-                                            <button className="btn btn-primary w-100" onClick={handleUpdateMargemLote}>
-                                                Salvar Lote
-                                            </button>
-                                        </div>
-                                    </div>
+                        <div style={{ padding: "16px 18px" }}>
+                            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>Defina a margem de segurança para um item específico.</p>
+                            
+                            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                                <div style={{ flex: 1, minWidth: 80 }}>
+                                    <label style={lblStyle}>ID do Item</label>
+                                    <input type="number" className="form-control" value={margemItemId} onChange={(e) => setMargemItemId(e.target.value)} placeholder="Ex: 1" style={{ fontSize: "0.82rem" }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 80 }}>
+                                    <label style={lblStyle}>Margem</label>
+                                    <input type="number" className="form-control" value={margemValor} onChange={(e) => setMargemValor(Number(e.target.value))} min={0} style={{ fontSize: "0.82rem" }} />
+                                </div>
+                                <div style={{ width: 100 }}>
+                                    <button onClick={handleUpdateMargem} style={{ display: "block", width: "100%", padding: "8px", borderRadius: 6, border: "none", background: "var(--brand)", color: "#fff", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", height: 35 }}>
+                                        Salvar
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Tabela de referência */}
-                    <div className="card mt-4">
-                        <div className="card-body">
-                            <h6 className="card-title">Margens Atuais</h6>
-                            <div className="table-responsive">
-                                <table className="table table-striped table-sm">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Item</th>
-                                            <th>Setor</th>
-                                            <th>Estoque</th>
-                                            <th>Margem Atual</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sugestoes.map((s) => (
-                                            <tr key={s.itemId}>
-                                                <td>{s.itemId}</td>
-                                                <td>{s.itemName}</td>
-                                                <td>{s.itemSector}</td>
-                                                <td>{s.estoqueAtual}</td>
-                                                <td>{s.margemSeguranca}</td>
-                                                <td>
-                                                    <span className={`badge ${getStatusBadge(s.status)}`}>
-                                                        {getStatusLabel(s.status)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                    {/* Margem em Lote */}
+                    <div style={cardStyle}>
+                        <div style={headStyle}>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>Margem por Setor</div>
+                        </div>
+                        <div style={{ padding: "16px 18px" }}>
+                            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>Defina a margem de segurança para todos os itens de um setor.</p>
+                            
+                            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                                <div style={{ flex: 1, minWidth: 120 }}>
+                                    <label style={lblStyle}>Setor</label>
+                                    <input type="text" className="form-control" value={margemSetor} onChange={(e) => setMargemSetor(e.target.value.toUpperCase())} placeholder="Ex: LIMPEZA" style={{ fontSize: "0.82rem" }} />
+                                </div>
+                                <div style={{ width: 80 }}>
+                                    <label style={lblStyle}>Margem</label>
+                                    <input type="number" className="form-control" value={margemLoteValor} onChange={(e) => setMargemLoteValor(Number(e.target.value))} min={0} style={{ fontSize: "0.82rem" }} />
+                                </div>
+                                <div style={{ width: 100 }}>
+                                    <button onClick={handleUpdateMargemLote} style={{ display: "block", width: "100%", padding: "8px", borderRadius: 6, border: "none", background: "var(--text-primary)", color: "var(--surface)", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", height: 35 }}>
+                                        Salvar Lote
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </>
+
+                    {/* Tabela de Referência */}
+                    <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+                        <div style={headStyle}>
+                            <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>Tabela de Referência Rápida</div>
+                        </div>
+                        <div style={{ overflowX: "auto" }}>
+                            <table className="table table-hover" style={{ margin: 0 }}>
+                                <thead style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                                    <tr>
+                                        <th style={{ paddingLeft: 18, width: 60 }}>ID</th>
+                                        <th>Item</th>
+                                        <th>Setor</th>
+                                        <th>Estoque</th>
+                                        <th>Margem Atual</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sugestoes.map((s) => (
+                                        <tr key={s.itemId}>
+                                            <td style={{ paddingLeft: 18, fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemId}</td>
+                                            <td style={{ fontSize: "0.78rem", fontWeight: 600 }}>{s.itemName}</td>
+                                            <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemSector}</td>
+                                            <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: s.estoqueAtual === 0 ? "var(--danger)" : "var(--text-primary)" }}>{s.estoqueAtual}</td>
+                                            <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.margemSeguranca}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
             )}
         </div>
     );

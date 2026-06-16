@@ -3,6 +3,7 @@ import api from "../../services/useApi";
 import { Order, OrderItem } from "../../types/Order";
 import { Item } from "../../types/Item";
 import { formatDate } from "../../utils/dateFunctions";
+import { SearchDropdown } from "../../components/SearchDropdown";
 
 const Pedidos = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -293,28 +294,29 @@ const Pedidos = () => {
                     <div className="row g-2 mb-3 align-items-end">
                         <div className="col-md-4 position-relative">
                             <label className="form-label">Item</label>
-                            <input
-                                type="text"
-                                className="form-control"
+                            <SearchDropdown
                                 value={novoItemName}
-                                onChange={(e) => handleItemSearch(e.target.value)}
-                                placeholder="Nome do item..."
-                                autoComplete="off"
+                                onChange={handleItemSearch}
+                                onSelect={handleSelectItem}
+                                items={filteredItems}
+                                onClear={() => setFilteredItems([])}
+                                placeholder="Digite o nome do item..."
+                                getKey={i => i.id!}
+                                renderItem={(item, highlighted) => (
+                                    <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</div>
+                                            <div style={{ fontSize: "0.68rem", color: highlighted ? "rgba(255,255,255,0.8)" : "var(--text-muted)" }}>
+                                                {item.type}{item.size ? ` · Tam. ${item.size}` : ""} · Estoque: {item.quantity}
+                                            </div>
+                                        </div>
+                                        <span style={{
+                                            fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700,
+                                            color: highlighted ? "#fff" : item.quantity === 0 ? "var(--danger)" : item.quantity <= 10 ? "var(--warning)" : "var(--success)"
+                                        }}>{item.quantity}</span>
+                                    </div>
+                                )}
                             />
-                            {filteredItems.length > 0 && (
-                                <ul className="list-group position-absolute w-100" style={{ zIndex: 1000, maxHeight: "200px", overflowY: "auto" }}>
-                                    {filteredItems.map((item) => (
-                                        <li
-                                            key={item.id}
-                                            className="list-group-item list-group-item-action"
-                                            style={{ cursor: "pointer" }}
-                                            onClick={() => handleSelectItem(item)}
-                                        >
-                                            {item.name} — {item.type}
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
                         </div>
                         <div className="col-md-2">
                             <label className="form-label">Tipo</label>
