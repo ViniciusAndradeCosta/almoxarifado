@@ -7,17 +7,18 @@ import { SearchDropdown } from "../../components/SearchDropdown";
 import { IconTrash } from "../../components/Icons";
 
 const EntradaEstoque = () => {
-    const [entries, setEntries]           = useState<StockEntry[]>([]);
-    const [items, setItems]               = useState<Item[]>([]);
+    const [entries, setEntries]             = useState<StockEntry[]>([]);
+    const [items, setItems]                 = useState<Item[]>([]);
     const [filteredItems, setFilteredItems] = useState<Item[]>([]);
-    const [loading, setLoading]           = useState(true);
+    const [loading, setLoading]             = useState(true);
     const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
-    const [itemSearch, setItemSearch]     = useState("");
-    const [quantity, setQuantity]         = useState<number>(0);
-    const [entryDate, setEntryDate]       = useState(() => new Date().toISOString().split("T")[0]);
-    const [supplier, setSupplier]         = useState("");
+    const [itemSearch, setItemSearch]       = useState("");
+    const [quantity, setQuantity]           = useState<number>(0);
+    const [entryDate, setEntryDate]         = useState(() => new Date().toISOString().split("T")[0]);
+    const [supplier, setSupplier]           = useState("");
     const [invoiceNumber, setInvoiceNumber] = useState("");
-    const [notes, setNotes]               = useState("");
+    const [notes, setNotes]                 = useState("");
+    const [dateError, setDateError]         = useState("");
 
     useEffect(() => { fetchEntries(); fetchItems(); }, []);
 
@@ -37,6 +38,7 @@ const EntradaEstoque = () => {
         } catch (e) { console.log(e); }
     };
 
+    // Ajuste 3: dropdown com tamanho visível
     const handleItemSearch = (value: string) => {
         setItemSearch(value.toUpperCase());
         setSelectedItemId(null);
@@ -47,14 +49,32 @@ const EntradaEstoque = () => {
 
     const handleSelectItem = (item: Item) => {
         setSelectedItemId(item.id!);
-        setItemSearch(item.name);
+        // Ajuste 2: exibe nome + tamanho no campo selecionado
+        setItemSearch(item.size ? `${item.name} (${item.size})` : item.name);
         setFilteredItems([]);
+    };
+
+    // Ajuste 1: validação de data futura
+    const handleDateChange = (value: string) => {
+        const today = new Date().toISOString().split("T")[0];
+        if (value > today) {
+            setDateError("A data de entrada não pode ser uma data futura.");
+        } else {
+            setDateError("");
+        }
+        setEntryDate(value);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedItemId) { window.alert("Selecione um item da lista!"); return; }
         if (quantity <= 0) { window.alert("Quantidade inválida!"); return; }
+        // Ajuste 1: bloqueia submit com data futura
+        const today = new Date().toISOString().split("T")[0];
+        if (entryDate > today) {
+            window.alert("A data de entrada não pode ser uma data futura.");
+            return;
+        }
         try {
             const res = await api.post("/stockentry", {
                 itemId: selectedItemId, quantity,
@@ -66,7 +86,7 @@ const EntradaEstoque = () => {
             if (res.data.success) {
                 window.alert("Entrada registrada com sucesso!");
                 setSelectedItemId(null); setItemSearch(""); setQuantity(0);
-                setSupplier(""); setInvoiceNumber(""); setNotes("");
+                setSupplier(""); setInvoiceNumber(""); setNotes(""); setDateError("");
                 fetchEntries(); fetchItems();
             }
         } catch (error: any) {
@@ -82,10 +102,10 @@ const EntradaEstoque = () => {
         } catch (e) { window.alert("Erro ao excluir."); }
     };
 
-    const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" };
+    const card: React.CSSProperties     = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" };
     const cardForm: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8 };
-    const head: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", fontSize: "0.75rem", fontWeight: 700 };
-    const lbl: React.CSSProperties = { fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: 5, display: "block" };
+    const head: React.CSSProperties     = { display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", fontSize: "0.75rem", fontWeight: 700 };
+    const lbl: React.CSSProperties      = { fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: 5, display: "block" };
 
     if (loading) return (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
@@ -109,6 +129,7 @@ const EntradaEstoque = () => {
                         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                             <div>
                                 <label style={lbl}>Item</label>
+                                {/* Ajuste 2+3: dropdown mostra nome + tamanho */}
                                 <SearchDropdown
                                     value={itemSearch}
                                     onChange={handleItemSearch}
@@ -118,11 +139,21 @@ const EntradaEstoque = () => {
                                     placeholder="Digite o nome do item..."
                                     getKey={i => i.id!}
                                     renderItem={(item, highlighted) => (
-                                        <div style={{ padding: "8px 12px" }}>
-                                            <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</div>
-                                            <div style={{ fontSize: "0.68rem", color: highlighted ? "rgba(255,255,255,0.8)" : "var(--text-muted)" }}>
-                                                {item.type} · Estoque: {item.quantity}
+                                        <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</div>
+                                                <div style={{ fontSize: "0.68rem", color: highlighted ? "rgba(255,255,255,0.8)" : "var(--text-muted)" }}>
+                                                    {item.type}
+                                                    {/* Ajuste 2: tamanho sempre visível */}
+                                                    {item.size ? <span style={{ marginLeft: 6, fontWeight: 700, color: highlighted ? "#fff" : "var(--brand)" }}>TAM {item.size}</span> : ""}
+                                                    {" · "}Estoque: {item.quantity}
+                                                </div>
                                             </div>
+                                            {item.size && (
+                                                <span style={{ fontSize: "0.72rem", fontWeight: 800, padding: "2px 8px", borderRadius: 4, background: highlighted ? "rgba(255,255,255,0.2)" : "var(--brand-subtle)", color: highlighted ? "#fff" : "var(--brand)", flexShrink: 0 }}>
+                                                    {item.size}
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                 />
@@ -134,7 +165,19 @@ const EntradaEstoque = () => {
                             </div>
                             <div>
                                 <label style={lbl}>Data da Entrada</label>
-                                <input type="date" className="form-control" value={entryDate} onChange={e => setEntryDate(e.target.value)}/>
+                                {/* Ajuste 1: max=hoje, validação visual */}
+                                <input
+                                    type="date"
+                                    className={`form-control ${dateError ? "is-invalid" : ""}`}
+                                    value={entryDate}
+                                    max={new Date().toISOString().split("T")[0]}
+                                    onChange={e => handleDateChange(e.target.value)}
+                                />
+                                {dateError && (
+                                    <div style={{ color: "var(--danger)", fontSize: "0.68rem", marginTop: 4, fontWeight: 600 }}>
+                                        {dateError}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
@@ -152,7 +195,8 @@ const EntradaEstoque = () => {
                             </div>
                         </div>
                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                            <button type="submit" className="btn btn-primary" style={{ padding: "8px 28px" }}>
+                            <button type="submit" className="btn btn-primary" style={{ padding: "8px 28px" }}
+                                disabled={!!dateError}>
                                 Registrar Entrada
                             </button>
                         </div>
@@ -168,35 +212,42 @@ const EntradaEstoque = () => {
                         Nenhuma entrada registrada.
                     </div>
                 ) : (
-                    <table className="table table-striped" style={{ margin: 0 }}>
-                        <thead>
-                            <tr>
-                                <th>Item</th><th>Tipo</th><th>Setor</th>
-                                <th style={{ textAlign: "center" }}>Qtd</th>
-                                <th>Data</th><th>Fornecedor</th><th>NF</th><th>Obs</th>
-                                <th style={{ textAlign: "center" }}>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {entries.map(entry => (
-                                <tr key={entry.id}>
-                                    <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>{entry.item?.name || "—"}</td>
-                                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{entry.item?.type || "—"}</td>
-                                    <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{entry.item?.sector || "—"}</td>
-                                    <td style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{entry.quantity}</td>
-                                    <td style={{ fontSize: "0.76rem", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(entry.entryDate)}</td>
-                                    <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.supplier || "—"}</td>
-                                    <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.invoiceNumber || "—"}</td>
-                                    <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.notes || "—"}</td>
-                                    <td style={{ textAlign: "center" }}>
-                                        <button onClick={() => handleDelete(entry.id!)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--danger)", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", margin: "0 auto" }}>
-                                            <IconTrash size={11}/> Excluir
-                                        </button>
-                                    </td>
+                    <div style={{ overflowX: "auto" }}>
+                        <table className="table table-striped" style={{ margin: 0 }}>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    {/* Ajuste 2: coluna tamanho no histórico */}
+                                    <th>Tam.</th>
+                                    <th>Tipo</th>
+                                    <th>Setor</th>
+                                    <th style={{ textAlign: "center" }}>Qtd</th>
+                                    <th>Data</th><th>Fornecedor</th><th>NF</th><th>Obs</th>
+                                    <th style={{ textAlign: "center" }}>Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {entries.map(entry => (
+                                    <tr key={entry.id}>
+                                        <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>{entry.item?.name || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--brand)", fontWeight: 700 }}>{entry.item?.size || "—"}</td>
+                                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{entry.item?.type || "—"}</td>
+                                        <td style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{entry.item?.sector || "—"}</td>
+                                        <td style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{entry.quantity}</td>
+                                        <td style={{ fontSize: "0.76rem", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(entry.entryDate)}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.supplier || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.invoiceNumber || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{entry.notes || "—"}</td>
+                                        <td style={{ textAlign: "center" }}>
+                                            <button onClick={() => handleDelete(entry.id!)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--danger)", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", margin: "0 auto" }}>
+                                                <IconTrash size={11}/> Excluir
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
         </div>

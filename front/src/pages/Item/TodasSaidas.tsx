@@ -175,6 +175,7 @@ const TodasSaidas = () => {
                         <table className="table table-striped" style={{ margin: 0, minWidth: 900 }}>
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Data</th>
                                     <th>Item</th>
                                     <th>Tipo</th>
@@ -182,24 +183,27 @@ const TodasSaidas = () => {
                                     <th>Tam.</th>
                                     <th style={{ textAlign: "center" }}>Qtd</th>
                                     <th>Funcionário</th>
-                                    <th>Departamento</th>
+                                    <th>Cargo</th>
                                     <th>Empresa</th>
+                                    <th>Departamento</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {pageData.map(w => (
                                     <tr key={w.id}>
+                                        <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", color: "var(--text-muted)" }}>{w.id}</td>
                                         <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.76rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                                             {formatDate(w.withdrawalDate)}
                                         </td>
                                         <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>{w.itemName}</td>
                                         <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.itemType || "—"}</td>
                                         <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.itemSector || "—"}</td>
-                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.itemSize || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--brand)", fontWeight: 700 }}>{w.itemSize || "—"}</td>
                                         <td style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "0.82rem" }}>{w.quantity}</td>
                                         <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>{w.employeeName}</td>
-                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.employeeDepartment || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.employeeRole || "—"}</td>
                                         <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.employeeCompany || "—"}</td>
+                                        <td style={{ fontSize: "0.76rem", color: "var(--text-muted)" }}>{w.employeeDepartment || "—"}</td>
                                     </tr>
                                 ))}
                             </tbody>

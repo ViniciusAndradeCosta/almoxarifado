@@ -1,16 +1,21 @@
 import prisma from '../../database/client.js';
+import bcrypt from 'bcrypt';
+
+const SALT_ROUNDS = 10;
 
 async function createUser(req, res) {
-    const { id, email, name, login, password, role} = req.body;
+    const { id, email, name, login, password, role } = req.body;
 
     try {
+        const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
         const newUser = await prisma.user.create({
             data: {
                 id,
                 email,
                 name,
                 login,
-                password,
+                password: hashedPassword,
                 role
             }
         });
@@ -44,17 +49,17 @@ async function updateUser(req, res) {
     const { email, name, login, password, role } = req.body;
 
     try {
+        const dataToUpdate = { email, name, login, role };
+
+        if (password) {
+            dataToUpdate.password = await bcrypt.hash(password, SALT_ROUNDS);
+        }
+
         const user = await prisma.user.update({
             where: {
                 id: parseInt(id)
             },
-            data: {
-                email,
-                name,
-                login,
-                password,
-                role
-            }
+            data: dataToUpdate
         });
 
         res.json(user);
@@ -102,14 +107,16 @@ async function login(req, res) {
             }
         });
 
-        if (user) {
-            if (user.password === password) {
-                res.json(user);
-            } else {
-                res.status(401).json({ error: 'Invalid password' });
-            }
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (passwordMatch) {
+            res.json(user);
         } else {
-            res.status(404).json({ error: 'User not found' });
+            res.status(401).json({ error: 'Invalid password' });
         }
     } catch (error) {
         res.status(500).json({ error: error.message });

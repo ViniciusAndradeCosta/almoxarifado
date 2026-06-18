@@ -8,131 +8,202 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// ── Componentes de layout reutilizáveis ──
+const headerHiper = (titulo, subtitulo, badge = "", corBarra = "#CC0000") => `
+  <div style="background:#1A1A1A;padding:22px 28px;border-radius:8px 8px 0 0">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td style="vertical-align:middle">
+        <table style="border-collapse:collapse"><tr>
+          <td style="vertical-align:middle;padding-right:14px">
+            <div style="background:${corBarra};width:5px;height:40px;border-radius:3px"></div>
+          </td>
+          <td style="vertical-align:middle">
+            <div style="color:#fff;font-size:17px;font-weight:800;font-family:Arial,sans-serif;letter-spacing:-0.3px">${titulo}</div>
+            <div style="color:#999;font-size:12px;margin-top:3px;font-family:Arial,sans-serif">${subtitulo}</div>
+          </td>
+        </tr></table>
+      </td>
+      ${badge ? `<td style="text-align:right;vertical-align:middle">
+        <div style="background:${corBarra};color:#fff;padding:6px 16px;border-radius:5px;font-size:13px;font-weight:800;font-family:Arial,sans-serif;display:inline-block">${badge}</div>
+      </td>` : ""}
+    </tr></table>
+  </div>`;
+
+const footerHiper = (corBorda = "#CC0000") => `
+  <div style="background:#1A1A1A;padding:14px 28px;border-radius:0 0 8px 8px;border-top:3px solid ${corBorda}">
+    <table style="width:100%;border-collapse:collapse"><tr>
+      <td>
+        <div style="color:#fff;font-size:13px;font-weight:800;font-family:Arial,sans-serif">Hiper Comercial Monlevade</div>
+        <div style="color:#666;font-size:11px;font-family:Arial,sans-serif;margin-top:2px">Sistema de Almoxarifado · Email automático</div>
+      </td>
+      <td style="text-align:right;vertical-align:middle">
+        <div style="color:#555;font-size:11px;font-family:Arial,sans-serif">${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div>
+      </td>
+    </tr></table>
+  </div>`;
+
+const th = (bg) => `style="padding:10px 14px;text-align:left;border:1px solid ${bg}cc;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#fff;background:${bg}"`;
+const thC = (bg) => `style="padding:10px 14px;text-align:center;border:1px solid ${bg}cc;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#fff;background:${bg}"`;
+const td = (extra = "") => `style="padding:9px 14px;border:1px solid #e8e8e8;font-family:Arial,sans-serif;font-size:13px;color:#333;${extra}"`;
+
 // ── Email de alertas de estoque ──
 export async function enviarEmailAlerta(alertas, assunto) {
   const destinatario = process.env.EMAIL_DESTINATARIO;
-
   if (!destinatario || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log("[Email] Configuração de e-mail incompleta. Alerta não enviado.");
+    console.log("[Email] Configuração incompleta. Alerta não enviado.");
     return;
   }
 
-  let html = `
-    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
-      <h2 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 10px;">
-        ⚠️ Alerta de Estoque — Almoxarifado
-      </h2>
-      <p>Os seguintes itens precisam de atenção:</p>
-  `;
-
-  if (alertas.critico.length > 0) {
-    html += `
-      <h3 style="color: #dc3545;">🔴 CRÍTICO — Estoque Zerado (${alertas.critico.length})</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="background-color: #dc3545; color: white;">
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Item</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Setor</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Estoque</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    alertas.critico.forEach((a) => {
-      html += `
-        <tr>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemName}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemType}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemSector}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: #dc3545; font-weight: bold;">0</td>
-        </tr>
-      `;
-    });
-    html += `</tbody></table>`;
-  }
-
-  if (alertas.alerta.length > 0) {
-    html += `
-      <h3 style="color: #fd7e14;">🟠 ALERTA — Abaixo da Margem (${alertas.alerta.length})</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="background-color: #fd7e14; color: white;">
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Item</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Setor</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Estoque</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Margem</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Faltam</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    alertas.alerta.forEach((a) => {
-      html += `
-        <tr>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemName}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemType}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemSector}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${a.estoqueAtual}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${a.margemSeguranca}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; color: #dc3545;">${a.deficit}</td>
-        </tr>
-      `;
-    });
-    html += `</tbody></table>`;
-  }
-
-  if (alertas.atencao.length > 0) {
-    html += `
-      <h3 style="color: #0dcaf0;">🟡 ATENÇÃO — Próximo da Margem (${alertas.atencao.length})</h3>
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="background-color: #0dcaf0; color: white;">
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Item</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Tipo</th>
-            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Setor</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Estoque</th>
-            <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Margem</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    alertas.atencao.forEach((a) => {
-      html += `
-        <tr>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemName}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemType}</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${a.itemSector}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${a.estoqueAtual}</td>
-          <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${a.margemSeguranca}</td>
-        </tr>
-      `;
-    });
-    html += `</tbody></table>`;
-  }
-
-  html += `
-      <hr style="border: 1px solid #eee; margin-top: 30px;">
-      <p style="color: #666; font-size: 12px;">
-        Este é um alerta automático do Sistema de Almoxarifado.<br>
-        Enviado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-      </p>
-    </div>
-  `;
-
   const totalAlertas = alertas.critico.length + alertas.alerta.length + alertas.atencao.length;
 
-  const mailOptions = {
-    from: `"Almoxarifado - Alertas" <${process.env.EMAIL_USER}>`,
-    to: destinatario,
-    subject: assunto || `⚠️ Alerta de Estoque: ${totalAlertas} item(ns) precisam de atenção`,
-    html,
-  };
+  // ── Seção CRÍTICO ──
+  let secaoCritico = "";
+  if (alertas.critico.length > 0) {
+    const linhas = alertas.critico.map((a, i) => `
+      <tr style="background:${i % 2 === 0 ? "#fff5f5" : "#fff"}">
+        <td ${td("font-weight:700")}>${a.itemName}</td>
+        <td ${td()}>${a.itemType || "—"}</td>
+        <td ${td()}>${a.itemSector || "—"}</td>
+        ${a.itemSize ? `<td ${td("text-align:center;font-weight:700;color:#CC0000")}>${a.itemSize}</td>` : ""}
+        <td ${td("text-align:center;font-weight:800;color:#CC0000;font-size:16px")}>0</td>
+        <td ${td("text-align:center")}>${a.margemSeguranca || "—"}</td>
+      </tr>`).join("");
+
+    secaoCritico = `
+      <div style="margin-bottom:24px">
+        <div style="background:#CC0000;color:#fff;display:inline-block;padding:5px 14px;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;font-weight:800;letter-spacing:0.5px;margin-bottom:10px">
+          🔴 CRÍTICO — ESTOQUE ZERADO (${alertas.critico.length})
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th ${th("#CC0000")}>Item</th>
+            <th ${th("#CC0000")}>Tipo</th>
+            <th ${th("#CC0000")}>Setor</th>
+            ${alertas.critico.some(a => a.itemSize) ? `<th ${thC("#CC0000")}>Tam.</th>` : ""}
+            <th ${thC("#CC0000")}>Estoque</th>
+            <th ${thC("#CC0000")}>Margem</th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Seção ALERTA ──
+  let secaoAlerta = "";
+  if (alertas.alerta.length > 0) {
+    const linhas = alertas.alerta.map((a, i) => `
+      <tr style="background:${i % 2 === 0 ? "#fffbf0" : "#fff"}">
+        <td ${td("font-weight:700")}>${a.itemName}</td>
+        <td ${td()}>${a.itemType || "—"}</td>
+        <td ${td()}>${a.itemSector || "—"}</td>
+        ${a.itemSize ? `<td ${td("text-align:center;font-weight:700")}>${a.itemSize}</td>` : ""}
+        <td ${td("text-align:center;font-weight:800;color:#b45309")}>${a.estoqueAtual}</td>
+        <td ${td("text-align:center")}>${a.margemSeguranca}</td>
+        <td ${td("text-align:center;font-weight:700;color:#CC0000")}>${a.deficit}</td>
+      </tr>`).join("");
+
+    secaoAlerta = `
+      <div style="margin-bottom:24px">
+        <div style="background:#b45309;color:#fff;display:inline-block;padding:5px 14px;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;font-weight:800;letter-spacing:0.5px;margin-bottom:10px">
+          🟠 ABAIXO DA MARGEM (${alertas.alerta.length})
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th ${th("#b45309")}>Item</th>
+            <th ${th("#b45309")}>Tipo</th>
+            <th ${th("#b45309")}>Setor</th>
+            ${alertas.alerta.some(a => a.itemSize) ? `<th ${thC("#b45309")}>Tam.</th>` : ""}
+            <th ${thC("#b45309")}>Estoque</th>
+            <th ${thC("#b45309")}>Margem</th>
+            <th ${thC("#b45309")}>Faltam</th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Seção ATENÇÃO ──
+  let secaoAtencao = "";
+  if (alertas.atencao.length > 0) {
+    const linhas = alertas.atencao.map((a, i) => `
+      <tr style="background:${i % 2 === 0 ? "#fefce8" : "#fff"}">
+        <td ${td("font-weight:700")}>${a.itemName}</td>
+        <td ${td()}>${a.itemType || "—"}</td>
+        <td ${td()}>${a.itemSector || "—"}</td>
+        ${a.itemSize ? `<td ${td("text-align:center;font-weight:700")}>${a.itemSize}</td>` : ""}
+        <td ${td("text-align:center;font-weight:800;color:#854d0e")}>${a.estoqueAtual}</td>
+        <td ${td("text-align:center")}>${a.margemSeguranca}</td>
+      </tr>`).join("");
+
+    secaoAtencao = `
+      <div style="margin-bottom:24px">
+        <div style="background:#854d0e;color:#fff;display:inline-block;padding:5px 14px;border-radius:4px;font-family:Arial,sans-serif;font-size:12px;font-weight:800;letter-spacing:0.5px;margin-bottom:10px">
+          🟡 ATENÇÃO — PRÓXIMO DA MARGEM (${alertas.atencao.length})
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th ${th("#854d0e")}>Item</th>
+            <th ${th("#854d0e")}>Tipo</th>
+            <th ${th("#854d0e")}>Setor</th>
+            ${alertas.atencao.some(a => a.itemSize) ? `<th ${thC("#854d0e")}>Tam.</th>` : ""}
+            <th ${thC("#854d0e")}>Estoque</th>
+            <th ${thC("#854d0e")}>Margem</th>
+          </tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>`;
+  }
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f4f4f4;padding:20px">
+      <div style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        ${headerHiper("Alerta de Estoque", "Hiper Comercial Monlevade — Almoxarifado", `${totalAlertas} item${totalAlertas !== 1 ? "s" : ""}`)}
+        <div style="padding:24px 28px">
+          <table style="width:100%;border-collapse:collapse;margin-bottom:24px"><tr>
+            <td style="padding:12px 16px;background:#f8f8f8;border:1px solid #eee;border-radius:6px;font-family:Arial,sans-serif;font-size:13px;color:#555">
+              Os itens abaixo requerem atenção. Verifique o estoque e realize os pedidos necessários.
+            </td>
+          </tr></table>
+
+          <!-- KPIs -->
+          <table style="width:100%;border-collapse:collapse;margin-bottom:28px"><tr>
+            ${alertas.critico.length > 0 ? `
+            <td style="padding:14px;text-align:center;background:#fff5f5;border:2px solid #CC0000;border-radius:6px">
+              <div style="font-size:28px;font-weight:800;color:#CC0000;font-family:Arial,sans-serif">${alertas.critico.length}</div>
+              <div style="font-size:11px;color:#666;font-family:Arial,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">Crítico</div>
+            </td>
+            <td style="width:10px"></td>` : ""}
+            ${alertas.alerta.length > 0 ? `
+            <td style="padding:14px;text-align:center;background:#fffbf0;border:2px solid #b45309;border-radius:6px">
+              <div style="font-size:28px;font-weight:800;color:#b45309;font-family:Arial,sans-serif">${alertas.alerta.length}</div>
+              <div style="font-size:11px;color:#666;font-family:Arial,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">Abaixo da Margem</div>
+            </td>
+            <td style="width:10px"></td>` : ""}
+            ${alertas.atencao.length > 0 ? `
+            <td style="padding:14px;text-align:center;background:#fefce8;border:2px solid #854d0e;border-radius:6px">
+              <div style="font-size:28px;font-weight:800;color:#854d0e;font-family:Arial,sans-serif">${alertas.atencao.length}</div>
+              <div style="font-size:11px;color:#666;font-family:Arial,sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">Atenção</div>
+            </td>` : ""}
+          </tr></table>
+
+          ${secaoCritico}
+          ${secaoAlerta}
+          ${secaoAtencao}
+        </div>
+        ${footerHiper("#CC0000")}
+      </div>
+    </div>`;
+
+  const ts = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Email] Alerta enviado para ${destinatario} — ID: ${info.messageId}`);
+    const info = await transporter.sendMail({
+      from: `"Almoxarifado Hiper" <${process.env.EMAIL_USER}>`,
+      to: destinatario,
+      subject: assunto ? `${assunto} [${ts}]` : `⚠️ Alerta de Estoque — ${totalAlertas} item(ns) [${ts}]`,
+      html,
+    });
+    console.log(`[Email] Alerta enviado — ID: ${info.messageId}`);
     return info;
   } catch (error) {
     console.error("[Email] Erro ao enviar alerta:", error.message);
@@ -143,153 +214,99 @@ export async function enviarEmailAlerta(alertas, assunto) {
 // ── Email de novo pedido ──
 export async function enviarEmailPedido(pedido) {
   const destinatario = process.env.EMAIL_DESTINATARIO;
-
   if (!destinatario || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.log("[Email] Configuração incompleta. Email de pedido não enviado.");
     return;
   }
 
   const dataPedido = new Date(pedido.orderDate || new Date()).toLocaleDateString("pt-BR", {
-    timeZone: "America/Sao_Paulo",
-    day: "2-digit", month: "2-digit", year: "numeric",
+    timeZone: "America/Sao_Paulo", day: "2-digit", month: "long", year: "numeric",
   });
 
   const totalItens = (pedido.items || []).reduce((acc, i) => acc + i.quantity, 0);
+  const totalTipos = (pedido.items || []).length;
+  const temTamanho = (pedido.items || []).some(i => i.itemSize);
 
-  let itensHtml = "";
-  (pedido.items || []).forEach((item, index) => {
-    const bg = index % 2 === 0 ? "#f9f9f9" : "#ffffff";
-    itensHtml += `
-      <tr style="background-color: ${bg};">
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; font-size: 13px;">${item.itemName || "—"}</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; text-align: center; font-weight: bold; color: #CC0000; font-size: 14px;">${item.quantity}</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; text-align: center;">
-          <span style="background: #fff3cd; color: #856404; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">
-            PENDENTE
-          </span>
-        </td>
-      </tr>
-    `;
-  });
+  const itensHtml = (pedido.items || []).map((item, i) => `
+    <tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
+      <td ${td("font-weight:700")}>${item.itemName || "—"}</td>
+      ${temTamanho ? `<td ${td("text-align:center;font-weight:700;color:#CC0000")}>${item.itemSize || "—"}</td>` : ""}
+      <td ${td("text-align:center;font-weight:800;font-size:15px;color:#CC0000")}>${item.quantity}</td>
+      <td ${td("text-align:center")}>
+        <span style="background:#fff3cd;color:#856404;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:800;letter-spacing:0.5px">PENDENTE</span>
+      </td>
+    </tr>`).join("");
 
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 680px; margin: 0 auto; color: #333;">
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f4f4f4;padding:20px">
+      <div style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        ${headerHiper("Novo Pedido Registrado", "Hiper Comercial Monlevade — Almoxarifado", `#${pedido.id || "—"}`)}
+        <div style="padding:24px 28px">
 
-      <!-- Header -->
-      <div style="background: #1A1A1A; padding: 24px 28px; border-radius: 8px 8px 0 0;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="vertical-align: middle;">
-              <div style="display: inline-block; background: #CC0000; width: 4px; height: 36px; border-radius: 2px; vertical-align: middle; margin-right: 14px;"></div>
-              <div style="display: inline-block; vertical-align: middle;">
-                <div style="color: #ffffff; font-size: 18px; font-weight: 800; letter-spacing: -0.5px; margin: 0;">
-                  Novo Pedido Registrado
-                </div>
-                <div style="color: #999999; font-size: 12px; margin-top: 3px;">
-                  Hiper Comercial Monlevade — Almoxarifado
-                </div>
-              </div>
+          <!-- KPIs -->
+          <table style="width:100%;border-collapse:collapse;margin-bottom:24px"><tr>
+            <td style="padding:14px 18px;background:#f8f8f8;border:1px solid #eee;border-radius:6px;text-align:center">
+              <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">Data</div>
+              <div style="font-size:13px;font-weight:700;color:#333;font-family:Arial,sans-serif;margin-top:4px">${dataPedido}</div>
             </td>
-            <td style="text-align: right; vertical-align: middle;">
-              <div style="background: #CC0000; color: white; padding: 6px 14px; border-radius: 5px; font-size: 13px; font-weight: 700; display: inline-block;">
-                #${pedido.id || "—"}
-              </div>
+            <td style="width:10px"></td>
+            <td style="padding:14px 18px;background:#f8f8f8;border:1px solid #eee;border-radius:6px;text-align:center">
+              <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">Fornecedor</div>
+              <div style="font-size:13px;font-weight:700;color:#333;font-family:Arial,sans-serif;margin-top:4px">${pedido.supplier || "Não informado"}</div>
             </td>
-          </tr>
-        </table>
-      </div>
+            <td style="width:10px"></td>
+            <td style="padding:14px 18px;background:#fff5f5;border:2px solid #CC0000;border-radius:6px;text-align:center">
+              <div style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;font-family:Arial,sans-serif">Total</div>
+              <div style="font-size:26px;font-weight:800;color:#CC0000;font-family:Arial,sans-serif;margin-top:2px">${totalItens}</div>
+              <div style="font-size:11px;color:#999;font-family:Arial,sans-serif">${totalTipos} tipo${totalTipos !== 1 ? "s" : ""}</div>
+            </td>
+          </tr></table>
 
-      <!-- Body -->
-      <div style="background: #ffffff; border: 1px solid #e0e0e0; border-top: none; padding: 24px 28px;">
-
-        <!-- Info do pedido -->
-        <table style="width: 100%; margin-bottom: 24px; border-collapse: collapse; background: #f8f8f8; border-radius: 6px; overflow: hidden;">
-          <tr>
-            <td style="padding: 10px 16px; color: #666; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; width: 35%; border-bottom: 1px solid #eee;">
-              Fornecedor
-            </td>
-            <td style="padding: 10px 16px; font-weight: 700; font-size: 13px; border-bottom: 1px solid #eee;">
-              ${pedido.supplier || "Não informado"}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 16px; color: #666; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #eee;">
-              Data do Pedido
-            </td>
-            <td style="padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #eee;">
-              ${dataPedido}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 10px 16px; color: #666; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; ${pedido.notes ? "border-bottom: 1px solid #eee;" : ""}">
-              Total
-            </td>
-            <td style="padding: 10px 16px; font-size: 13px; ${pedido.notes ? "border-bottom: 1px solid #eee;" : ""}">
-              <strong style="color: #CC0000;">${totalItens} unidades</strong> em ${pedido.items?.length || 0} tipo(s)
-            </td>
-          </tr>
           ${pedido.notes ? `
-          <tr>
-            <td style="padding: 10px 16px; color: #666; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-              Observações
-            </td>
-            <td style="padding: 10px 16px; font-size: 13px; color: #555;">
-              ${pedido.notes}
-            </td>
-          </tr>
-          ` : ""}
-        </table>
+          <div style="padding:10px 14px;background:#fefce8;border:1px solid #fde68a;border-radius:6px;font-family:Arial,sans-serif;font-size:13px;color:#555;margin-bottom:20px">
+            <strong style="color:#333">Observações:</strong> ${pedido.notes}
+          </div>` : ""}
 
-        <!-- Tabela de itens -->
-        <div style="font-size: 13px; font-weight: 700; color: #1A1A1A; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
-          Itens Solicitados
+          <!-- Tabela de itens -->
+          <div style="font-family:Arial,sans-serif;font-size:11px;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px">
+            Itens Solicitados
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th ${th("#CC0000")}>Item</th>
+              ${temTamanho ? `<th ${thC("#CC0000")}>Tamanho</th>` : ""}
+              <th ${thC("#CC0000")}>Quantidade</th>
+              <th ${thC("#CC0000")}>Status</th>
+            </tr></thead>
+            <tbody>${itensHtml}</tbody>
+            <tfoot>
+              <tr style="background:#1A1A1A">
+                <td style="padding:11px 14px;font-weight:800;font-family:Arial,sans-serif;font-size:13px;color:#fff;border:1px solid #333">
+                  Total — ${totalTipos} tipo${totalTipos !== 1 ? "s" : ""}
+                </td>
+                ${temTamanho ? `<td style="border:1px solid #333"></td>` : ""}
+                <td style="padding:11px 14px;text-align:center;font-weight:800;font-size:20px;color:#CC0000;font-family:Arial,sans-serif;border:1px solid #333">${totalItens}</td>
+                <td style="padding:11px 14px;border:1px solid #333"></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-          <thead>
-            <tr style="background-color: #CC0000; color: white;">
-              <th style="padding: 10px 12px; text-align: left; border: 1px solid #b00000; font-weight: 700;">Item</th>
-              <th style="padding: 10px 12px; text-align: center; border: 1px solid #b00000; font-weight: 700; width: 110px;">Quantidade</th>
-              <th style="padding: 10px 12px; text-align: center; border: 1px solid #b00000; font-weight: 700; width: 120px;">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itensHtml}
-          </tbody>
-          <tfoot>
-            <tr style="background: #1A1A1A; color: white;">
-              <td style="padding: 10px 12px; font-weight: 700; border: 1px solid #333;">Total</td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 800; font-size: 15px; color: #CC0000; border: 1px solid #333;">${totalItens}</td>
-              <td style="padding: 10px 12px; border: 1px solid #333;"></td>
-            </tr>
-          </tfoot>
-        </table>
-
+        ${footerHiper("#CC0000")}
       </div>
+    </div>`;
 
-      <!-- Footer -->
-      <div style="background: #f5f5f5; border: 1px solid #e0e0e0; border-top: none; padding: 14px 28px; border-radius: 0 0 8px 8px;">
-        <p style="color: #aaa; font-size: 11px; margin: 0; line-height: 1.6;">
-          Email automático do Sistema de Almoxarifado · Hiper Comercial Monlevade<br>
-          Enviado em: ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-        </p>
-      </div>
-
-    </div>
-  `;
-
-  const mailOptions = {
-    from: `"Almoxarifado - Pedidos" <${process.env.EMAIL_USER}>`,
-    to: destinatario,
-    subject: `🛒 Novo Pedido #${pedido.id || ""} — ${pedido.supplier || "Fornecedor"} (${totalItens} itens)`,
-    html,
-  };
+  const ts = new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[Email] Pedido #${pedido.id} enviado para ${destinatario} — ID: ${info.messageId}`);
+    const info = await transporter.sendMail({
+      from: `"Almoxarifado Hiper" <${process.env.EMAIL_USER}>`,
+      to: destinatario,
+      subject: `🛒 Pedido #${pedido.id || ""} — ${pedido.supplier || "Sem fornecedor"} · ${totalItens} un. [${ts}]`,
+      html,
+    });
+    console.log(`[Email] Pedido #${pedido.id} enviado — ID: ${info.messageId}`);
     return info;
   } catch (error) {
     console.error("[Email] Erro ao enviar email de pedido:", error.message);
-    // Não lança o erro para não quebrar a criação do pedido
   }
 }

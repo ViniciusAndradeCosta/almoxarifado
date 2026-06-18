@@ -7,9 +7,14 @@ import { Item } from "../../types/Item";
 import { Withdrawal } from "../../types/Withdrawal";
 import { SearchDropdown } from "../../components/SearchDropdown";
 import {
-  IconSearch, IconX, IconEdit, IconTrash, IconDownload,
+  IconX, IconEdit, IconTrash, IconDownload,
   IconCheckCircle, IconPackage, IconUsers, IconArrowRight, IconCalendar
 } from "../../components/Icons";
+
+interface Cabinet {
+  number: number; size: string; sector: string;
+  situation: string; date: string | null; name: string | null;
+}
 
 const SaidaItens = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,19 +30,54 @@ const SaidaItens = () => {
   const [loading, setLoading]             = useState(true);
   const [saving, setSaving]               = useState(false);
 
+  // Armário vinculado
+  const [armario, setArmario]             = useState<Cabinet | null>(null);
+
+  // Troca de uniforme
+  const [shirtSize, setShirtSize]         = useState("");
+  const [pantsSize, setPantsSize]         = useState("");
+  const [shoesSize, setShoesSize]         = useState("");
+  const [savingUniforme, setSavingUniforme] = useState(false);
+
+  // Histórico de devoluções (descartes do funcionário)
+  const [descartes, setDescartes]         = useState<any[]>([]);
+
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const [empRes, saidasRes, itemsRes] = await Promise.all([
+      const [empRes, saidasRes, itemsRes, armarioRes, descartesRes] = await Promise.all([
         api.get(`/employee/${id}`),
         api.get(`/getitemsout/${id}`),
         api.get("/getitems"),
+        api.get("/getcabinets"),
+        api.get("/getdiscarded"),
       ]);
-      setFuncionario(empRes.data);
+      const emp: Employee = empRes.data;
+      setFuncionario(emp);
       setSaidas(saidasRes.data);
       setItems(itemsRes.data);
+      setShirtSize(emp.shirt_size || "");
+      setPantsSize(emp.pants_size?.toString() || "");
+      setShoesSize(emp.shoes_size?.toString() || "");
+
+      // Busca armário vinculado pelo nome exato do funcionário
+      const todos: Cabinet[] = armarioRes.data;
+      const vinculado = todos.find(a =>
+        a.situation === "Ocupado" &&
+        a.name?.toUpperCase().trim() === (emp.name?.toUpperCase().trim() || "")
+      ) || null;
+      setArmario(vinculado);
+
+      // Filtra descartes registrados em nome deste funcionário
+      const nomeEmp = emp.name?.toUpperCase() || "";
+      const primeiroNome = nomeEmp.split(" ")[0];
+      setDescartes((descartesRes.data || []).filter((d: any) =>
+        d.discardedBy?.toUpperCase().includes(primeiroNome) ||
+        d.notes?.toUpperCase().includes(primeiroNome)
+      ));
+
     } catch (e) { console.log(e); }
     finally { setLoading(false); }
   };
@@ -79,12 +119,6 @@ const SaidaItens = () => {
     } finally { setSaving(false); }
   };
 
-  const handleDevolver = async (saidaId: number) => {
-    if (!window.confirm("Devolver este item ao estoque?")) return;
-    try { await api.delete(`/returnitemandaddquantity/${saidaId}`); fetchAll(); }
-    catch (e) { window.alert("Erro ao devolver."); }
-  };
-
   const handleExcluir = async (saidaId: number) => {
     if (!window.confirm("Excluir este registro?")) return;
     try { await api.delete(`/returnitem/${saidaId}`); fetchAll(); }
@@ -103,34 +137,44 @@ const SaidaItens = () => {
     } catch (e) { window.alert("Erro ao baixar ficha."); }
   };
 
+  const handleSalvarUniforme = async () => {
+    try {
+      setSavingUniforme(true);
+      await api.put(`/employee/${id}`, {
+        name: funcionario?.name,
+        company: funcionario?.company,
+        role: funcionario?.role,
+        department: funcionario?.department,
+        admissionDate: funcionario?.admissionDate,
+        shirt_size: shirtSize.toUpperCase() || null,
+        pants_size: parseInt(pantsSize) || null,
+        shoes_size: parseInt(shoesSize) || null,
+      });
+      window.alert("Tamanhos de uniforme atualizados com sucesso!");
+      fetchAll();
+    } catch (e) { window.alert("Erro ao atualizar uniforme."); }
+    finally { setSavingUniforme(false); }
+  };
+
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
       <div className="spinner-border" role="status"/>
     </div>
   );
 
-  const totalItens = saidas.reduce((acc, s) => acc + s.quantity, 0);
+  const totalItens  = saidas.reduce((acc, s) => acc + s.quantity, 0);
   const ultimaSaida = saidas.length > 0
     ? [...saidas].sort((a, b) => new Date(b.withdrawalDate).getTime() - new Date(a.withdrawalDate).getTime())[0]
     : null;
 
-  const card: React.CSSProperties = {
-    background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden",
-  };
-  const head: React.CSSProperties = {
-    display: "flex", alignItems: "center", gap: 8, padding: "10px 16px",
-    borderBottom: "1px solid var(--border)", background: "var(--surface-2)",
-    fontSize: "0.75rem", fontWeight: 700, flexShrink: 0,
-  };
-  const lbl: React.CSSProperties = {
-    fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const,
-    letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: 5, display: "block",
-  };
+  const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" };
+  const head: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderBottom: "1px solid var(--border)", background: "var(--surface-2)", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0 };
+  const lbl: React.CSSProperties  = { fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: 5, display: "block" };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <button onClick={() => navigate("/funcionarios")} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 7, padding: "6px 12px", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: 5 }}>
@@ -148,17 +192,24 @@ const SaidaItens = () => {
             </p>
           </div>
         </div>
-        <button onClick={handleDownloadFicha} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
-          <IconDownload size={13}/> Baixar Ficha
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => navigate(`/devolucao?empId=${id}&empName=${encodeURIComponent(funcionario?.name || "")}`)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--success)", border: "none", borderRadius: 7, color: "#fff", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>
+            ↩ Registrar Devolução
+          </button>
+          <button onClick={handleDownloadFicha} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
+            <IconDownload size={13}/> Baixar Ficha
+          </button>
+        </div>
       </div>
 
-      {/* ── KPIs ── */}
+      {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         {[
-          { label: "Total de Saídas",  value: saidas.length, color: "var(--brand)", icon: <IconArrowRight size={16}/> },
-          { label: "Peças Entregues",  value: totalItens,    color: "var(--info)",  icon: <IconPackage size={16}/> },
-          { label: "Última Entrega",   value: ultimaSaida ? formatDate(ultimaSaida.withdrawalDate) : "—", color: "var(--text-primary)", icon: <IconCalendar size={16}/>, mono: false },
+          { label: "Total de Saídas", value: saidas.length, color: "var(--brand)",        icon: <IconArrowRight size={16}/> },
+          { label: "Peças Entregues", value: totalItens,    color: "var(--info)",          icon: <IconPackage size={16}/> },
+          { label: "Última Entrega",  value: ultimaSaida ? formatDate(ultimaSaida.withdrawalDate) : "—", color: "var(--text-primary)", icon: <IconCalendar size={16}/>, mono: false },
         ].map(({ label, value, color, icon, mono }) => (
           <div key={label} style={{ ...card, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ width: 38, height: 38, borderRadius: 8, background: "var(--brand-subtle)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brand)", flexShrink: 0 }}>
@@ -172,36 +223,95 @@ const SaidaItens = () => {
         ))}
       </div>
 
-      {/* ── Layout principal ── */}
+      {/* Armário + Uniforme */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+
+        {/* Armário vinculado */}
+        <div style={card}>
+          <div style={head}>🗄️ Armário Vinculado</div>
+          <div style={{ padding: "14px 18px" }}>
+            {armario ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "2rem", fontWeight: 800, color: "var(--brand)", lineHeight: 1 }}>
+                    #{armario.number}
+                  </span>
+                  <div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 600 }}>{armario.sector} · {armario.size}</div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--danger)", fontWeight: 700 }}>🔴 Ocupado</div>
+                  </div>
+                </div>
+                <div style={{ padding: "8px 12px", background: "var(--surface-2)", borderRadius: 6, fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                  <strong style={{ color: "var(--text-primary)" }}>Ocupante registrado:</strong> {armario.name}
+                  {armario.date && <div style={{ marginTop: 2 }}>Desde: {formatDate(armario.date)}</div>}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 0" }}>
+                <span style={{ fontSize: "2rem" }}>🔓</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--success)" }}>Sem armário vinculado</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textAlign: "center" }}>
+                  Vincule um armário na página de Armários
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tamanhos de uniforme */}
+        <div style={card}>
+          <div style={head}>👕 Tamanhos de Uniforme</div>
+          <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div>
+                <label style={lbl}>Camisa</label>
+                <input className="form-control" value={shirtSize} onChange={e => setShirtSize(e.target.value)} placeholder="Ex: M, G, GG" style={{ textAlign: "center", fontWeight: 700 }}/>
+              </div>
+              <div>
+                <label style={lbl}>Calça</label>
+                <input type="number" className="form-control" value={pantsSize} onChange={e => setPantsSize(e.target.value)} placeholder="Ex: 42" style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}/>
+              </div>
+              <div>
+                <label style={lbl}>Calçado</label>
+                <input type="number" className="form-control" value={shoesSize} onChange={e => setShoesSize(e.target.value)} placeholder="Ex: 40" style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}/>
+              </div>
+            </div>
+            <button onClick={handleSalvarUniforme} disabled={savingUniforme}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px", borderRadius: 7, border: "none", background: "var(--brand)", color: "#fff", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
+              {savingUniforme ? <><span className="spinner-border spinner-border-sm"/>Salvando...</> : <><IconCheckCircle size={13}/> Salvar Tamanhos</>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Layout principal: saída + histórico de saídas */}
       <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 14 }}>
 
-        {/* ── Registrar Saída ── */}
+        {/* Registrar Saída */}
         <div style={{ ...card, display: "flex", flexDirection: "column" }}>
           <div style={head}>
             <IconPackage size={13} color="var(--brand)"/> Registrar Nova Saída
           </div>
           <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
-
             <div>
               <label style={lbl}>Item</label>
               <SearchDropdown
-					value={itemSearch}
-					onChange={handleItemSearch}
-					onSelect={selectItem}
-					items={filteredItems}
-					onClear={() => setFilteredItems([])}
-					placeholder="Buscar item pelo nome..."
-					getKey={i => i.id!}
-					renderItem={(item, highlighted) => (
-						<div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-						<span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
-						<span style={{
-							fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700,
-							color: highlighted ? "#fff" : (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--success)"
-						}}>{item.quantity} un.</span>
-						</div>
-					)}
-					/>
+                value={itemSearch}
+                onChange={handleItemSearch}
+                onSelect={selectItem}
+                items={filteredItems}
+                onClear={() => setFilteredItems([])}
+                placeholder="Buscar item pelo nome..."
+                getKey={i => i.id!}
+                renderItem={(item, highlighted) => (
+                  <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "0.72rem", fontWeight: 700, color: highlighted ? "#fff" : (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--success)" }}>
+                      {item.quantity} un.
+                    </span>
+                  </div>
+                )}
+              />
               {selectedItem && (
                 <div style={{ marginTop: 8, padding: "10px 14px", background: "var(--brand-subtle)", border: "1px solid var(--brand)", borderRadius: 7, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
@@ -234,7 +344,6 @@ const SaidaItens = () => {
 
             <div style={{ flex: 1 }}/>
 
-            {/* Resumo antes de confirmar */}
             {selectedItem && quantity > 0 && quantity <= (selectedItem.quantity ?? 0) && (
               <div style={{ padding: "10px 14px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 7, fontSize: "0.76rem", color: "var(--text-secondary)" }}>
                 Entregar <strong style={{ color: "var(--text-primary)" }}>{quantity}x {selectedItem.name}</strong> para <strong style={{ color: "var(--text-primary)" }}>{funcionario?.name}</strong>
@@ -244,15 +353,12 @@ const SaidaItens = () => {
             <button onClick={handleCadastrarSaida} disabled={saving || !selectedItem || quantity <= 0 || quantity > (selectedItem?.quantity ?? 0)}
               className="btn btn-primary w-100"
               style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px" }}>
-              {saving
-                ? <><span className="spinner-border spinner-border-sm"/>Registrando...</>
-                : <><IconCheckCircle size={14}/> Confirmar Saída</>
-              }
+              {saving ? <><span className="spinner-border spinner-border-sm"/>Registrando...</> : <><IconCheckCircle size={14}/> Confirmar Saída</>}
             </button>
           </div>
         </div>
 
-        {/* ── Histórico ── */}
+        {/* Histórico de saídas */}
         <div style={{ ...card, display: "flex", flexDirection: "column" }}>
           <div style={head}>
             <IconArrowRight size={13} color="var(--text-muted)"/>
@@ -289,7 +395,10 @@ const SaidaItens = () => {
                         <td style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(saida.withdrawalDate)}</td>
                         <td>
                           <div style={{ display: "flex", gap: 5, justifyContent: "center" }}>
-                            <button onClick={() => handleDevolver(saida.id)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--success)", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            {/* Botão Devolver navega para tela de devolução com funcionário pré-selecionado */}
+                            <button
+                              onClick={() => navigate(`/devolucao?empId=${id}&empName=${encodeURIComponent(funcionario?.name || "")}`)}
+                              style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--success)", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                               <IconCheckCircle size={11}/> Devolver
                             </button>
                             <button onClick={() => navigate(`/atualizarsaida/${saida.id}`)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "#2563EB", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
@@ -307,8 +416,46 @@ const SaidaItens = () => {
             </div>
           )}
         </div>
-
       </div>
+
+      {/* Histórico de devoluções (descartes do funcionário) */}
+      {descartes.length > 0 && (
+        <div style={card}>
+          <div style={head}>
+            🗑️ Histórico de Devoluções
+            <span style={{ marginLeft: "auto", fontSize: "0.68rem", color: "var(--text-muted)", fontWeight: 500 }}>
+              {descartes.length} registro{descartes.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="table table-striped" style={{ margin: 0 }}>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Tam.</th>
+                  <th style={{ textAlign: "center" }}>Qtd</th>
+                  <th>Motivo</th>
+                  <th>Observações</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {descartes.map((d: any) => (
+                  <tr key={d.id}>
+                    <td style={{ fontWeight: 600, fontSize: "0.8rem" }}>{d.item?.name || "—"}</td>
+                    <td style={{ fontSize: "0.76rem", color: "var(--brand)", fontWeight: 700 }}>{d.item?.size || "—"}</td>
+                    <td style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{d.quantity}</td>
+                    <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{d.reason || "—"}</td>
+                    <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{d.notes || "—"}</td>
+                    <td style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(d.discardDate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

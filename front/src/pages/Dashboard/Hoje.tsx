@@ -9,6 +9,7 @@ import {
 
 interface AlertItem {
   itemId: number; itemName: string; itemType: string; itemSector: string;
+  itemSize?: string;
   estoqueAtual: number; margemSeguranca: number; deficit: number; nivel: string;
 }
 interface FeedItem {
@@ -41,7 +42,6 @@ const Hoje = () => {
   const [cart, setCart]                   = useState<CartItem[]>([]);
   const [sending, setSending]             = useState(false);
 
-  // Estados para navegação por teclado
   const [highlightedEmpIndex, setHighlightedEmpIndex] = useState(-1);
   const [highlightedItemIndex, setHighlightedItemIndex] = useState(-1);
 
@@ -98,9 +98,8 @@ const Hoje = () => {
     finally { setLoading(false); }
   };
 
-  // Funções de busca com reset de highlight
   const handleEmpSearch = (val: string) => {
-    setEmpSearch(val); 
+    setEmpSearch(val);
     setSelectedEmp(null);
     setHighlightedEmpIndex(-1);
     setFilteredEmp(val.length > 0
@@ -117,10 +116,10 @@ const Hoje = () => {
       ? items.filter(i => i.name.toLowerCase().includes(val.toLowerCase())).slice(0, 5) : []);
   };
 
-  const selectEmp = (emp: Employee) => { 
-    setSelectedEmp(emp); 
-    setEmpSearch(emp.name); 
-    setFilteredEmp([]); 
+  const selectEmp = (emp: Employee) => {
+    setSelectedEmp(emp);
+    setEmpSearch(emp.name);
+    setFilteredEmp([]);
     setHighlightedEmpIndex(-1);
   };
 
@@ -129,7 +128,7 @@ const Hoje = () => {
     setCart(ex
       ? cart.map(c => c.item.id === item.id ? { ...c, quantity: c.quantity + 1 } : c)
       : [...cart, { item, quantity: 1 }]);
-    setItemSearch(""); 
+    setItemSearch("");
     setFilteredItems([]);
     setHighlightedItemIndex(-1);
   };
@@ -164,9 +163,13 @@ const Hoje = () => {
   const totalCart = cart.reduce((a, c) => a + c.quantity, 0);
   const cartError = cart.some(c => c.quantity > c.item.quantity);
 
-  // Filtrar os funcionários que entraram hoje
-  const hojeDateString = new Date().toDateString();
-  const novosHoje = employees.filter(e => e.admissionDate && new Date(e.admissionDate).toDateString() === hojeDateString);
+  const agora = new Date();
+  const hojeDateString = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,"0")}-${String(agora.getDate()).padStart(2,"0")}`;
+  const novosHoje = employees.filter(e => {
+    if (!e.admissionDate) return false;
+    const admData = e.admissionDate.split("T")[0];
+    return admData === hojeDateString;
+  });
 
   if (loading) {
     return (
@@ -211,19 +214,17 @@ const Hoje = () => {
         </p>
       </div>
 
-      {/* Layout flex */}
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
 
-        {/* ═══ ESQUERDA — Coluna Fixa ═══ */}
+        {/* ═══ ESQUERDA ═══ */}
         <div style={{
           width: 380, flexShrink: 0,
           display: "flex", flexDirection: "column", gap: 20,
           position: "sticky", top: 16
         }}>
-          
+
           {/* Entrega Rápida */}
           <div style={S.panel}>
-            {/* Header */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "12px 16px", borderBottom: "1px solid var(--border)",
@@ -234,7 +235,6 @@ const Hoje = () => {
               Entrega Rápida
             </div>
 
-            {/* Corpo */}
             <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 18 }}>
 
               {/* Colaborador */}
@@ -249,19 +249,10 @@ const Hoje = () => {
                     onChange={e => handleEmpSearch(e.target.value)}
                     onKeyDown={e => {
                       if (filteredEmp.length === 0) return;
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setHighlightedEmpIndex(prev => Math.min(prev + 1, filteredEmp.length - 1));
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setHighlightedEmpIndex(prev => Math.max(prev - 1, 0));
-                      } else if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (highlightedEmpIndex >= 0) selectEmp(filteredEmp[highlightedEmpIndex]);
-                      } else if (e.key === "Escape") {
-                        setFilteredEmp([]);
-                        setHighlightedEmpIndex(-1);
-                      }
+                      if (e.key === "ArrowDown") { e.preventDefault(); setHighlightedEmpIndex(prev => Math.min(prev + 1, filteredEmp.length - 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightedEmpIndex(prev => Math.max(prev - 1, 0)); }
+                      else if (e.key === "Enter") { e.preventDefault(); if (highlightedEmpIndex >= 0) selectEmp(filteredEmp[highlightedEmpIndex]); }
+                      else if (e.key === "Escape") { setFilteredEmp([]); setHighlightedEmpIndex(-1); }
                     }}
                     placeholder="Buscar nome ou setor..."
                     autoComplete="off"
@@ -270,19 +261,18 @@ const Hoje = () => {
                   <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
                     <IconSearch size={14} />
                   </div>
-                  {/* DROPDOWN DE COLABORADOR */}
                   {filteredEmp.length > 0 && (
-                    <ul style={{ 
-                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
+                    <ul style={{
+                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)",
                       borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
                       padding: 0, margin: "4px 0 0 0", listStyle: "none"
                     }}>
                       {filteredEmp.map((emp, index) => (
-                        <li key={emp.id} 
-                          onMouseDown={(e) => { e.preventDefault(); selectEmp(emp); }} 
+                        <li key={emp.id}
+                          onMouseDown={(e) => { e.preventDefault(); selectEmp(emp); }}
                           onMouseEnter={() => setHighlightedEmpIndex(index)}
-                          style={{ 
+                          style={{
                             cursor: "pointer", padding: "8px 12px",
                             background: index === highlightedEmpIndex ? "var(--brand)" : "transparent",
                             color: index === highlightedEmpIndex ? "#fff" : "var(--text-primary)",
@@ -290,10 +280,9 @@ const Hoje = () => {
                             borderBottom: index < filteredEmp.length - 1 ? "1px solid var(--border)" : "none"
                           }}>
                           <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{emp.name}</div>
-                          <div style={{ 
-                            color: index === highlightedEmpIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)", 
-                            fontSize: "0.68rem" 
-                          }}>{emp.role} · {emp.department}</div>
+                          <div style={{ color: index === highlightedEmpIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)", fontSize: "0.68rem" }}>
+                            {emp.role} · {emp.department}
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -329,19 +318,10 @@ const Hoje = () => {
                     onChange={e => handleItemSearch(e.target.value)}
                     onKeyDown={e => {
                       if (filteredItems.length === 0) return;
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setHighlightedItemIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setHighlightedItemIndex(prev => Math.max(prev - 1, 0));
-                      } else if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (highlightedItemIndex >= 0) addToCart(filteredItems[highlightedItemIndex]);
-                      } else if (e.key === "Escape") {
-                        setFilteredItems([]);
-                        setHighlightedItemIndex(-1);
-                      }
+                      if (e.key === "ArrowDown") { e.preventDefault(); setHighlightedItemIndex(prev => Math.min(prev + 1, filteredItems.length - 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightedItemIndex(prev => Math.max(prev - 1, 0)); }
+                      else if (e.key === "Enter") { e.preventDefault(); if (highlightedItemIndex >= 0) addToCart(filteredItems[highlightedItemIndex]); }
+                      else if (e.key === "Escape") { setFilteredItems([]); setHighlightedItemIndex(-1); }
                     }}
                     placeholder="Buscar item..."
                     autoComplete="off"
@@ -350,19 +330,18 @@ const Hoje = () => {
                   <div style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none" }}>
                     <IconSearch size={14} />
                   </div>
-                  {/* DROPDOWN DE ITENS */}
                   {filteredItems.length > 0 && (
-                    <ul style={{ 
-                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4, 
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)", 
+                    <ul style={{
+                      position: "absolute", width: "100%", zIndex: 20, marginTop: 4,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)", background: "var(--surface)",
                       borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)",
                       padding: 0, margin: "4px 0 0 0", listStyle: "none"
                     }}>
                       {filteredItems.map((item, index) => (
-                        <li key={item.id} 
+                        <li key={item.id}
                           onMouseDown={(e) => { e.preventDefault(); addToCart(item); }}
                           onMouseEnter={() => setHighlightedItemIndex(index)}
-                          style={{ 
+                          style={{
                             cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px",
                             background: index === highlightedItemIndex ? "var(--brand)" : "transparent",
                             color: index === highlightedItemIndex ? "#fff" : "var(--text-primary)",
@@ -424,7 +403,6 @@ const Hoje = () => {
                 </div>
               )}
 
-              {/* Botão */}
               <button
                 className="btn btn-primary w-100"
                 onClick={confirmEntrega}
@@ -439,7 +417,7 @@ const Hoje = () => {
             </div>
           </div>
 
-          {/* Painel de Novos Colaboradores */}
+          {/* Novos Colaboradores */}
           <div style={S.panel}>
             <div style={S.panelHead}>
               <IconUsers size={15} color="var(--success)" />
@@ -468,10 +446,10 @@ const Hoje = () => {
                         {emp.role} · {emp.department}
                       </div>
                     </div>
-                    <Link to={`/funcionarios`} style={{ 
-                      fontSize: "0.65rem", fontWeight: 800, color: "var(--brand)", 
-                      background: "var(--brand-subtle)", padding: "4px 8px", borderRadius: 4, 
-                      textDecoration: "none", flexShrink: 0 
+                    <Link to="/funcionarios" style={{
+                      fontSize: "0.65rem", fontWeight: 800, color: "var(--brand)",
+                      background: "var(--brand-subtle)", padding: "4px 8px", borderRadius: 4,
+                      textDecoration: "none", flexShrink: 0
                     }}>
                       VER
                     </Link>
@@ -482,7 +460,7 @@ const Hoje = () => {
           </div>
         </div>
 
-        {/* ═══ DIREITA — Painel do dia ═══ */}
+        {/* ═══ DIREITA ═══ */}
         <div style={{ flex: 1, minWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Ações rápidas */}
@@ -551,13 +529,16 @@ const Hoje = () => {
                     </div>
                   </div>
                 </div>
-                <Link to="/pedidos" style={{
-                  fontSize: "0.7rem", fontWeight: 700, color: "var(--brand)",
-                  border: "1px solid var(--brand)", borderRadius: 5,
-                  padding: "4px 10px", textDecoration: "none", transition: "all 0.15s"
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--brand)"; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}>
+                {/* ALTERADO: passa itemId, itemName, itemType e itemSize na URL */}
+                <Link
+                  to={`/pedidos?itemId=${a.itemId}&itemName=${encodeURIComponent(a.itemName)}&itemType=${encodeURIComponent(a.itemType || "")}&itemSize=${encodeURIComponent(a.itemSize || "")}`}
+                  style={{
+                    fontSize: "0.7rem", fontWeight: 700, color: "var(--brand)",
+                    border: "1px solid var(--brand)", borderRadius: 5,
+                    padding: "4px 10px", textDecoration: "none", transition: "all 0.15s"
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--brand)"; (e.currentTarget as HTMLElement).style.color = "#fff"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--brand)"; }}>
                   Pedir
                 </Link>
               </div>

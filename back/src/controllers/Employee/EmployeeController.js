@@ -89,14 +89,10 @@ async function updateEmployee(req, res) {
 
 async function deleteEmployee(req, res) {
     const { id } = req.params;
-
     try {
         const employee = await prisma.employee.delete({
-            where: {
-                id: parseInt(id)
-            }
+            where: { id: parseInt(id) }
         });
-
         res.json(employee);
     }
     catch (error) {

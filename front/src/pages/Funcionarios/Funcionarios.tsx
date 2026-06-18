@@ -275,14 +275,19 @@ const Funcionarios = () => {
   };
 
   const handleExcluir = async (id: number) => {
-    if (!window.confirm("Deseja realmente excluir este funcionário?")) return;
+    if (!window.confirm("Deseja realmente excluir este funcionário?\n\nAtenção: todas as saídas registradas para este funcionário também serão removidas.")) return;
     try {
-      await api.delete(`/employee/${id}`);
+      const res = await api.delete(`/employee/${id}`);
+      if (res.data?.error) {
+        window.alert("Erro ao excluir: " + res.data.error);
+        return;
+      }
       fetchAll();
       if (selected?.id === id) closePanel();
-    } catch (e) { window.alert("Erro ao excluir."); }
+    } catch (e: any) {
+      window.alert("Erro ao excluir: " + (e.response?.data?.error || "Tente novamente."));
+    }
   };
-
   const handleExportCSV = () => {
     const csv = Papa.unparse(funcionarios.map(({ name, company: c, role, department, admissionDate, shirt_size, pants_size, shoes_size }) => ({
       NOME: name, EMPRESA: c, DEPARTAMENTO: department, CARGO: role,

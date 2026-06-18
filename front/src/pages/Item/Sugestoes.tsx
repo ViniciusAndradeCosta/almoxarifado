@@ -51,11 +51,11 @@ const Sugestoes = () => {
     const [filtroStatus, setFiltroStatus] = useState("");
     const [filtroNome, setFiltroNome] = useState("");
 
-    // Margem de segurança
+    // Margem de segurança — usando string para evitar campo travado em 0
     const [margemItemId, setMargemItemId] = useState("");
-    const [margemValor, setMargemValor] = useState<number>(0);
+    const [margemValor, setMargemValor] = useState<string>("");
     const [margemSetor, setMargemSetor] = useState("");
-    const [margemLoteValor, setMargemLoteValor] = useState<number>(0);
+    const [margemLoteValor, setMargemLoteValor] = useState<string>("");
 
     useEffect(() => {
         fetchSugestoes();
@@ -119,13 +119,15 @@ const Sugestoes = () => {
             return;
         }
         try {
-            const res = await api.put(`/item/${margemItemId}/minstock`, { minStock: margemValor });
+            const res = await api.put(`/item/${margemItemId}/minstock`, {
+                minStock: parseInt(margemValor) || 0
+            });
             if (res.data.success) {
                 window.alert(res.data.message);
                 fetchSugestoes();
                 fetchAlertas();
                 setMargemItemId("");
-                setMargemValor(0);
+                setMargemValor("");
             }
         } catch (error: any) {
             window.alert(error.response?.data?.error || "Erro ao atualizar margem.");
@@ -141,12 +143,14 @@ const Sugestoes = () => {
         try {
             const res = await api.put("/items/minstock/batch", {
                 sector: margemSetor,
-                minStock: margemLoteValor,
+                minStock: parseInt(margemLoteValor) || 0,
             });
             if (res.data.success) {
                 window.alert(res.data.message);
                 fetchSugestoes();
                 fetchAlertas();
+                setMargemSetor("");
+                setMargemLoteValor("");
             }
         } catch (error: any) {
             window.alert(error.response?.data?.error || "Erro ao atualizar margem em lote.");
@@ -155,15 +159,17 @@ const Sugestoes = () => {
 
     // === ESTILOS INLINE ===
     const cardStyle: React.CSSProperties = {
-        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 24, boxSizing: "border-box"
+        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8,
+        overflow: "hidden", marginBottom: 24, boxSizing: "border-box"
     };
     const headStyle: React.CSSProperties = {
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "14px 18px", 
-        borderBottom: "1px solid var(--border)", background: "var(--surface-2)", boxSizing: "border-box"
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        padding: "14px 18px", borderBottom: "1px solid var(--border)",
+        background: "var(--surface-2)", boxSizing: "border-box"
     };
     const lblStyle: React.CSSProperties = {
-        fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", 
-        color: "var(--text-secondary)", marginBottom: 5, display: "block"
+        fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const,
+        letterSpacing: "0.06em", color: "var(--text-secondary)", marginBottom: 5, display: "block"
     };
 
     if (loading) {
@@ -176,7 +182,7 @@ const Sugestoes = () => {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 40, boxSizing: "border-box" }}>
-            
+
             {/* Header da Página */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10, borderBottom: "1px solid var(--border)" }}>
                 <div>
@@ -209,48 +215,20 @@ const Sugestoes = () => {
                 </div>
             )}
 
-            {/* Abas Personalizadas */}
+            {/* Abas */}
             <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
-                <button
-                    onClick={() => setActiveTab("sugestoes")}
-                    style={{
-                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
-                        background: activeTab === "sugestoes" ? "var(--brand)" : "var(--surface)",
-                        color: activeTab === "sugestoes" ? "#fff" : "var(--text-secondary)",
-                        border: activeTab !== "sugestoes" ? "1px solid var(--border)" : "1px solid var(--brand)"
-                    }}
-                >
+                <button onClick={() => setActiveTab("sugestoes")} style={{ padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", background: activeTab === "sugestoes" ? "var(--brand)" : "var(--surface)", color: activeTab === "sugestoes" ? "#fff" : "var(--text-secondary)", border: activeTab !== "sugestoes" ? "1px solid var(--border)" : "1px solid var(--brand)" }}>
                     Sugestões de Pedido
                 </button>
-                <button
-                    onClick={() => setActiveTab("alertas")}
-                    style={{
-                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
-                        background: activeTab === "alertas" ? "var(--brand)" : "var(--surface)",
-                        color: activeTab === "alertas" ? "#fff" : "var(--text-secondary)",
-                        border: activeTab !== "alertas" ? "1px solid var(--border)" : "1px solid var(--brand)"
-                    }}
-                >
+                <button onClick={() => setActiveTab("alertas")} style={{ padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6, background: activeTab === "alertas" ? "var(--brand)" : "var(--surface)", color: activeTab === "alertas" ? "#fff" : "var(--text-secondary)", border: activeTab !== "alertas" ? "1px solid var(--border)" : "1px solid var(--brand)" }}>
                     Alertas Detalhados
                     {alertasData && alertasData.totalAlertas > 0 && (
-                        <span style={{
-                            background: activeTab === "alertas" ? "#fff" : "var(--danger)",
-                            color: activeTab === "alertas" ? "var(--brand)" : "#fff",
-                            padding: "2px 6px", borderRadius: 10, fontSize: "0.65rem", fontWeight: 800
-                        }}>
+                        <span style={{ background: activeTab === "alertas" ? "#fff" : "var(--danger)", color: activeTab === "alertas" ? "var(--brand)" : "#fff", padding: "2px 6px", borderRadius: 10, fontSize: "0.65rem", fontWeight: 800 }}>
                             {alertasData.totalAlertas}
                         </span>
                     )}
                 </button>
-                <button
-                    onClick={() => setActiveTab("margem")}
-                    style={{
-                        padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s",
-                        background: activeTab === "margem" ? "var(--brand)" : "var(--surface)",
-                        color: activeTab === "margem" ? "#fff" : "var(--text-secondary)",
-                        border: activeTab !== "margem" ? "1px solid var(--border)" : "1px solid var(--brand)"
-                    }}
-                >
+                <button onClick={() => setActiveTab("margem")} style={{ padding: "8px 16px", borderRadius: 8, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s", background: activeTab === "margem" ? "var(--brand)" : "var(--surface)", color: activeTab === "margem" ? "#fff" : "var(--text-secondary)", border: activeTab !== "margem" ? "1px solid var(--border)" : "1px solid var(--brand)" }}>
                     Configurar Margem
                 </button>
             </div>
@@ -258,32 +236,18 @@ const Sugestoes = () => {
             {/* === ABA: SUGESTÕES === */}
             {activeTab === "sugestoes" && (
                 <div style={cardStyle}>
-                    {/* Header da Tabela com Filtros */}
                     <div style={{ ...headStyle, flexWrap: "wrap", gap: 14 }}>
                         <div style={{ fontWeight: 800, fontSize: "0.85rem", whiteSpace: "nowrap" }}>
                             Tabela de Sugestões <span style={{ color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem", marginLeft: 4 }}>({filteredSugestoes.length} itens)</span>
                         </div>
-                        
                         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ position: "relative", width: "220px", maxWidth: "100%" }}>
-                                <input
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    placeholder="Filtrar por nome..."
-                                    value={filtroNome}
-                                    onChange={(e) => setFiltroNome(e.target.value)}
-                                    style={{ paddingRight: "30px", margin: 0, fontSize: "0.78rem" }} 
-                                />
+                                <input type="text" className="form-control form-control-sm" placeholder="Filtrar por nome..." value={filtroNome} onChange={(e) => setFiltroNome(e.target.value)} style={{ paddingRight: "30px", margin: 0, fontSize: "0.78rem" }} />
                                 <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", display: "flex", pointerEvents: "none", zIndex: 2 }}>
-                                    <IconSearch size={14}/>
+                                    <IconSearch size={14} />
                                 </div>
                             </div>
-                            <select
-                                className="form-select form-select-sm"
-                                value={filtroStatus}
-                                onChange={(e) => setFiltroStatus(e.target.value)}
-                                style={{ width: "160px", margin: 0, fontSize: "0.78rem" }}
-                            >
+                            <select className="form-select form-select-sm" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} style={{ width: "160px", margin: 0, fontSize: "0.78rem" }}>
                                 <option value="">Todos os status</option>
                                 <option value="SEM_ESTOQUE">Sem Estoque</option>
                                 <option value="ABAIXO_MARGEM">Abaixo da Margem</option>
@@ -291,15 +255,11 @@ const Sugestoes = () => {
                                 <option value="ESTOQUE_BAIXO">Estoque Baixo</option>
                                 <option value="OK">OK</option>
                             </select>
-                            <button 
-                                onClick={fetchSugestoes}
-                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", height: 31 }}
-                            >
+                            <button onClick={fetchSugestoes} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", height: 31 }}>
                                 Atualizar
                             </button>
                         </div>
                     </div>
-
                     <div style={{ overflowX: "auto" }}>
                         <table className="table table-hover" style={{ margin: 0 }}>
                             <thead style={{ fontSize: "0.7rem", textTransform: "uppercase", color: "var(--text-secondary)" }}>
@@ -327,11 +287,7 @@ const Sugestoes = () => {
                                             {s.sugestaoQuantidade > 0 ? `+${s.sugestaoQuantidade}` : "—"}
                                         </td>
                                         <td>
-                                            <span style={{ 
-                                                fontSize: "0.65rem", fontWeight: 800, padding: "3px 8px", borderRadius: 4, 
-                                                background: `${getStatusColor(s.status)}20`,
-                                                color: getStatusColor(s.status) 
-                                            }}>
+                                            <span style={{ fontSize: "0.65rem", fontWeight: 800, padding: "3px 8px", borderRadius: 4, background: `${getStatusColor(s.status)}20`, color: getStatusColor(s.status) }}>
                                                 {getStatusLabel(s.status).toUpperCase()}
                                             </span>
                                         </td>
@@ -371,7 +327,9 @@ const Sugestoes = () => {
                                         {alertasData.alertas.critico.map((a, i) => (
                                             <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.critico.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong>
+                                                    {a.itemSize && <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--brand)", marginLeft: 6 }}>({a.itemSize})</span>}
+                                                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}> — {a.itemSector}</span>
                                                 </div>
                                                 <span style={{ fontSize: "0.7rem", fontWeight: 800, background: "var(--danger)", color: "#fff", padding: "3px 8px", borderRadius: 4 }}>Estoque: {a.estoqueAtual}</span>
                                             </div>
@@ -391,7 +349,9 @@ const Sugestoes = () => {
                                         {alertasData.alertas.alerta.map((a, i) => (
                                             <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.alerta.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong>
+                                                    {a.itemSize && <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--brand)", marginLeft: 6 }}>({a.itemSize})</span>}
+                                                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}> — {a.itemSector}</span>
                                                     <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{a.mensagem}</div>
                                                 </div>
                                                 <div style={{ textAlign: "right" }}>
@@ -415,11 +375,14 @@ const Sugestoes = () => {
                                         {alertasData.alertas.atencao.map((a, i) => (
                                             <div key={a.itemId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < alertasData.alertas.atencao.length - 1 ? "1px solid var(--border)" : "none" }}>
                                                 <div>
-                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong> <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>— {a.itemSector}</span>
+                                                    <strong style={{ fontSize: "0.8rem" }}>{a.itemName}</strong>
+                                                    {a.itemSize && <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--brand)", marginLeft: 6 }}>({a.itemSize})</span>}
+                                                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}> — {a.itemSector}</span>
                                                     <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{a.mensagem}</div>
                                                 </div>
                                                 <div style={{ textAlign: "right" }}>
                                                     <span style={{ fontSize: "0.7rem", fontWeight: 800, background: "var(--info)", color: "#000", padding: "3px 8px", borderRadius: 4 }}>Estoque: {a.estoqueAtual}/{a.margemSeguranca}</span>
+                                                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: 4, fontWeight: 700 }}>Limite: {a.limiteAtencao}</div>
                                                 </div>
                                             </div>
                                         ))}
@@ -433,8 +396,11 @@ const Sugestoes = () => {
 
             {/* === ABA: CONFIGURAR MARGEM === */}
             {activeTab === "margem" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
-                    
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                    {/* Linha superior: dois cards lado a lado */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
                     {/* Margem Individual */}
                     <div style={cardStyle}>
                         <div style={headStyle}>
@@ -442,15 +408,30 @@ const Sugestoes = () => {
                         </div>
                         <div style={{ padding: "16px 18px" }}>
                             <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>Defina a margem de segurança para um item específico.</p>
-                            
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                                 <div style={{ flex: 1, minWidth: 80 }}>
                                     <label style={lblStyle}>ID do Item</label>
-                                    <input type="number" className="form-control" value={margemItemId} onChange={(e) => setMargemItemId(e.target.value)} placeholder="Ex: 1" style={{ fontSize: "0.82rem" }} />
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={margemItemId}
+                                        onChange={(e) => setMargemItemId(e.target.value)}
+                                        placeholder="Ex: 1"
+                                        style={{ fontSize: "0.82rem" }}
+                                    />
                                 </div>
                                 <div style={{ flex: 1, minWidth: 80 }}>
                                     <label style={lblStyle}>Margem</label>
-                                    <input type="number" className="form-control" value={margemValor} onChange={(e) => setMargemValor(Number(e.target.value))} min={0} style={{ fontSize: "0.82rem" }} />
+                                    {/* CORRIGIDO: string em vez de number para não travar em 0 */}
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={margemValor}
+                                        onChange={(e) => setMargemValor(e.target.value)}
+                                        min={0}
+                                        placeholder="Ex: 10"
+                                        style={{ fontSize: "0.82rem" }}
+                                    />
                                 </div>
                                 <div style={{ width: 100 }}>
                                     <button onClick={handleUpdateMargem} style={{ display: "block", width: "100%", padding: "8px", borderRadius: 6, border: "none", background: "var(--brand)", color: "#fff", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", height: 35 }}>
@@ -468,15 +449,30 @@ const Sugestoes = () => {
                         </div>
                         <div style={{ padding: "16px 18px" }}>
                             <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 16 }}>Defina a margem de segurança para todos os itens de um setor.</p>
-                            
                             <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                                 <div style={{ flex: 1, minWidth: 120 }}>
                                     <label style={lblStyle}>Setor</label>
-                                    <input type="text" className="form-control" value={margemSetor} onChange={(e) => setMargemSetor(e.target.value.toUpperCase())} placeholder="Ex: LIMPEZA" style={{ fontSize: "0.82rem" }} />
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        value={margemSetor}
+                                        onChange={(e) => setMargemSetor(e.target.value.toUpperCase())}
+                                        placeholder="Ex: LIMPEZA"
+                                        style={{ fontSize: "0.82rem" }}
+                                    />
                                 </div>
                                 <div style={{ width: 80 }}>
                                     <label style={lblStyle}>Margem</label>
-                                    <input type="number" className="form-control" value={margemLoteValor} onChange={(e) => setMargemLoteValor(Number(e.target.value))} min={0} style={{ fontSize: "0.82rem" }} />
+                                    {/* CORRIGIDO: string em vez de number para não travar em 0 */}
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={margemLoteValor}
+                                        onChange={(e) => setMargemLoteValor(e.target.value)}
+                                        min={0}
+                                        placeholder="Ex: 5"
+                                        style={{ fontSize: "0.82rem" }}
+                                    />
                                 </div>
                                 <div style={{ width: 100 }}>
                                     <button onClick={handleUpdateMargemLote} style={{ display: "block", width: "100%", padding: "8px", borderRadius: 6, border: "none", background: "var(--text-primary)", color: "var(--surface)", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", height: 35 }}>
@@ -487,10 +483,13 @@ const Sugestoes = () => {
                         </div>
                     </div>
 
-                    {/* Tabela de Referência */}
-                    <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+                    </div>{/* fim grid 2 colunas */}
+
+                    {/* Tabela de Referência — largura total */}
+                    <div style={{ ...cardStyle }}>
                         <div style={headStyle}>
                             <div style={{ fontWeight: 800, fontSize: "0.85rem" }}>Tabela de Referência Rápida</div>
+                            <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>{sugestoes.length} itens</span>
                         </div>
                         <div style={{ overflowX: "auto" }}>
                             <table className="table table-hover" style={{ margin: 0 }}>
@@ -498,19 +497,27 @@ const Sugestoes = () => {
                                     <tr>
                                         <th style={{ paddingLeft: 18, width: 60 }}>ID</th>
                                         <th>Item</th>
+                                        <th>Tam.</th>
                                         <th>Setor</th>
                                         <th>Estoque</th>
                                         <th>Margem Atual</th>
+                                        <th>Limite Atenção</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sugestoes.map((s) => (
                                         <tr key={s.itemId}>
-                                            <td style={{ paddingLeft: 18, fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemId}</td>
+                                            <td style={{ paddingLeft: 18, fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{s.itemId}</td>
                                             <td style={{ fontSize: "0.78rem", fontWeight: 600 }}>{s.itemName}</td>
+                                            <td style={{ fontSize: "0.74rem", color: "var(--brand)", fontWeight: 700 }}>{s.itemSize || "—"}</td>
                                             <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemSector}</td>
                                             <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: s.estoqueAtual === 0 ? "var(--danger)" : "var(--text-primary)" }}>{s.estoqueAtual}</td>
-                                            <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.margemSeguranca}</td>
+                                            <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: s.margemSeguranca === 0 ? "var(--text-muted)" : "var(--text-primary)" }}>
+                                                {s.margemSeguranca === 0 ? <span style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.7rem" }}>não definida</span> : s.margemSeguranca}
+                                            </td>
+                                            <td style={{ fontSize: "0.74rem", fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>
+                                                {s.margemSeguranca > 0 ? Math.ceil(s.margemSeguranca * 1.5) : "—"}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
