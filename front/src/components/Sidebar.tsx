@@ -246,6 +246,7 @@ const Sidebar = () => {
           <NavGroup icon={<IconPackage size={20}/>} label="Estoque" id="estoque"
             open={openMenu === "estoque"} collapsed={collapsed} onToggle={() => toggle("estoque")}>
             <SubLink to="/estoque"     label="Ver Estoque" active={active("/estoque")}/>
+            <SubLink to="/notas-fiscais" label="Notas Fiscais" active={active("/notas-fiscais")}/>
             <SubLink to="/saidas"      label="Saídas"      active={active("/saidas")}/>
             <SubLink to="/descartados" label="Descartados" active={active("/descartados")}/>
             <SubLink to="/devolucao" label="Devolução" active={active("/devolucao")}/>

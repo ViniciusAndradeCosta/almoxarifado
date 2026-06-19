@@ -35,7 +35,14 @@ const Estoque = () => {
   const [modalItem, setModalItem]       = useState<Item | null>(null);
   const [modalWithdrawals, setModalWithdrawals] = useState<any[]>([]);
 
-  useEffect(() => { fetchItems(); }, []);
+  const [returnStats, setReturnStats] = useState<Record<number, { devolvidoEstoque: number; devolvidoDescarte: number }>>({});
+
+  useEffect(() => { fetchItems(); fetchReturnStats(); }, []);
+
+  const fetchReturnStats = async () => {
+    try { const res = await api.get("/getreturnstats"); setReturnStats(res.data); }
+    catch (e) { console.log(e); }
+  };
 
   useEffect(() => {
     const f = estoque.filter(i =>
@@ -260,10 +267,31 @@ const Estoque = () => {
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{item.type || "—"}</td>
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{item.sector || "—"}</td>
                   <td style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{item.size || "—"}</td>
-                  <td style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "0.82rem",
-                    color: (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--text-primary)"
-                  }}>
-                    {item.quantity ?? 0}
+                  <td style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <td style={{ textAlign: "center" }}>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: "0.82rem",
+                          color: (item.quantity ?? 0) === 0 ? "var(--danger)" : (item.quantity ?? 0) <= 10 ? "var(--warning)" : "var(--text-primary)"
+                        }}>
+                          {item.quantity ?? 0}
+                        </span>
+                        {(item as any).quantityReturned > 0 && (
+                          <div style={{ fontSize: "0.62rem", color: "var(--info)", fontWeight: 600, marginTop: 2 }}>
+                            {(item.quantity ?? 0) - (item as any).quantityReturned} novos + {(item as any).quantityReturned} devolvidos
+                          </div>
+                        )}
+                      </td>
+                      {/* Identificador: item tem devoluções registradas */}
+                      {returnStats[item.id!]?.devolvidoEstoque > 0 && (
+                        <span title={`${returnStats[item.id!].devolvidoEstoque} un. devolvida(s) ao estoque`} style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 16, height: 16, borderRadius: "50%", background: "var(--info)",
+                          color: "#fff", fontSize: "0.55rem", fontWeight: 800, flexShrink: 0,
+                        }}>
+                          ↩
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ color: "var(--text-muted)", fontSize: "0.76rem" }}>{item.ean || "—"}</td>
                   <td>

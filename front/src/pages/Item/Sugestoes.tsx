@@ -269,8 +269,6 @@ const Sugestoes = () => {
                                     <th>Estoque</th>
                                     <th>Margem</th>
                                     <th>Média/Mês</th>
-                                    <th>Estoque Alvo</th>
-                                    <th>Sugestão</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -279,13 +277,15 @@ const Sugestoes = () => {
                                     <tr key={s.itemId}>
                                         <td style={{ paddingLeft: 18, fontSize: "0.78rem", fontWeight: 600 }}>{s.itemName}</td>
                                         <td style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>{s.itemSector}</td>
-                                        <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: s.estoqueAtual === 0 ? "var(--danger)" : "var(--text-primary)" }}>{s.estoqueAtual}</td>
-                                        <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.margemSeguranca}</td>
-                                        <td style={{ fontSize: "0.74rem", fontFamily: "'JetBrains Mono', monospace", color: "var(--text-secondary)" }}>{s.mediaMensalSaida.toFixed(1)}</td>
-                                        <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>{s.estoqueAlvo}</td>
-                                        <td style={{ fontSize: "0.78rem", fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: s.sugestaoQuantidade > 0 ? "var(--brand)" : "var(--text-muted)" }}>
-                                            {s.sugestaoQuantidade > 0 ? `+${s.sugestaoQuantidade}` : "—"}
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace",
+                                            color: s.estoqueAtual === 0 ? "var(--danger)"
+                                                 : s.margemSeguranca > 0 && s.estoqueAtual <= s.margemSeguranca ? "var(--warning)"
+                                                 : "var(--text-primary)"
+                                        }}>{s.estoqueAtual}</td>
+                                        <td style={{ fontSize: "0.78rem", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>
+                                            {s.margemSeguranca === 0 ? <span style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.7rem" }}>—</span> : s.margemSeguranca}
                                         </td>
+                                        <td style={{ fontSize: "0.74rem", fontFamily: "'JetBrains Mono', monospace", color: "var(--text-secondary)" }}>{s.mediaMensalSaida.toFixed(1)}</td>
                                         <td>
                                             <span style={{ fontSize: "0.65rem", fontWeight: 800, padding: "3px 8px", borderRadius: 4, background: `${getStatusColor(s.status)}20`, color: getStatusColor(s.status) }}>
                                                 {getStatusLabel(s.status).toUpperCase()}
@@ -295,7 +295,7 @@ const Sugestoes = () => {
                                 ))}
                                 {filteredSugestoes.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                                        <td colSpan={6} style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: "0.82rem" }}>
                                             Nenhuma sugestão encontrada com estes filtros.
                                         </td>
                                     </tr>

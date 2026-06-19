@@ -35,7 +35,8 @@ model Employee {
 model Item {
   id          Int          @id @default(autoincrement())
   name        String
-  quantity    Int
+  quantity    Int          // quantidade TOTAL disponível (novo + devolvido)
+  quantityReturned Int     @default(0) // quantidade dentro do total que veio de devolução
   ean         String?
   type        String
   sector      String
@@ -52,6 +53,7 @@ model Withdrawal {
   withdrawalDate DateTime @default(now()) // Data de retirada
   item           Item     @relation(fields: [itemId], references: [id])
   quantity       Int
+  origemPeca     String   @default("NOVA") // NOVA ou DEVOLVIDA — indica de qual lote a peça foi retirada
   itemId         Int
   employee       Employee @relation(fields: [employeeId], references: [id])
   employeeId     Int
@@ -82,6 +84,7 @@ model AllWithdrawal {
   employeeRole       String
   employeeCompany    String
   employeeDepartment String
+  tipoMovimento      String   @default("SAIDA") 
 }
 
 model StockEntry {
@@ -94,6 +97,7 @@ model StockEntry {
   invoiceNumber String?  // Número da nota fiscal (opcional)
   notes         String?  // Observações
   createdAt     DateTime @default(now())
+  invoices      Invoice[]
 }
 
 model Order {
@@ -144,4 +148,19 @@ model LaundryRecord {
   sentBy          String?                       // Quem enviou
   notes           String?
   createdAt       DateTime  @default(now())
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  fileName      String   // Nome original do arquivo
+  filePath      String   // Caminho no servidor
+  fileType      String   // mime type (pdf, jpg, png)
+  fileSize      Int      // tamanho em bytes
+  supplier      String?  // fornecedor
+  invoiceNumber String?  // número da NF
+  invoiceDate   DateTime? // data da nota fiscal
+  notes         String?  // observações
+  uploadedAt    DateTime @default(now())
+  stockEntryId  Int?     // vínculo opcional com uma entrada de estoque
+  stockEntry    StockEntry? @relation(fields: [stockEntryId], references: [id])
 }

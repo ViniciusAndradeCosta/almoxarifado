@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/useApi";
 import { formatDate, getLocalDateISO } from "../../utils/dateFunctions";
+import { format, subDays } from "date-fns";
 import { Employee } from "../../types/Employee";
 import { Item } from "../../types/Item";
 import { Withdrawal } from "../../types/Withdrawal";
@@ -27,6 +28,7 @@ const SaidaItens = () => {
   const [itemSearch, setItemSearch]       = useState("");
   const [selectedItem, setSelectedItem]   = useState<Item | null>(null);
   const [quantity, setQuantity]           = useState<number>(0);
+  const [withdrawalDate, setWithdrawalDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [loading, setLoading]             = useState(true);
   const [saving, setSaving]               = useState(false);
 
@@ -106,10 +108,10 @@ const SaidaItens = () => {
         employeeId: parseInt(id!),
         itemId: selectedItem.id,
         quantity,
-        withdrawalDate: getLocalDateISO(),
+        withdrawalDate: `${withdrawalDate}T${new Date().toTimeString().slice(0, 8)}.000Z`,
       });
       if (res.data.success) {
-        setSelectedItem(null); setItemSearch(""); setQuantity(0);
+        setSelectedItem(null); setItemSearch(""); setQuantity(0); setWithdrawalDate(format(new Date(), "yyyy-MM-dd"));
         fetchAll();
       } else {
         window.alert(res.data.error || "Erro ao cadastrar saída.");
@@ -193,11 +195,6 @@ const SaidaItens = () => {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => navigate(`/devolucao?empId=${id}&empName=${encodeURIComponent(funcionario?.name || "")}`)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--success)", border: "none", borderRadius: 7, color: "#fff", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>
-            ↩ Registrar Devolução
-          </button>
           <button onClick={handleDownloadFicha} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 7, color: "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
             <IconDownload size={13}/> Baixar Ficha
           </button>
@@ -342,6 +339,23 @@ const SaidaItens = () => {
               )}
             </div>
 
+            <div>
+              <label style={lbl}>Data da Saída</label>
+              <input
+                type="date"
+                className="form-control"
+                value={withdrawalDate}
+                min={format(subDays(new Date(), 20), "yyyy-MM-dd")}
+                max={format(new Date(), "yyyy-MM-dd")}
+                onChange={e => setWithdrawalDate(e.target.value)}
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textAlign: "center" }}
+                onKeyDown={e => e.preventDefault()}
+              />
+              <p style={{ fontSize: "0.65rem", color: "var(--text-muted)", margin: "4px 0 0" }}>
+                Limite: últimos 20 dias
+              </p>
+            </div>
+
             <div style={{ flex: 1 }}/>
 
             {selectedItem && quantity > 0 && quantity <= (selectedItem.quantity ?? 0) && (
@@ -395,9 +409,9 @@ const SaidaItens = () => {
                         <td style={{ fontSize: "0.74rem", color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{formatDate(saida.withdrawalDate)}</td>
                         <td>
                           <div style={{ display: "flex", gap: 5, justifyContent: "center" }}>
-                            {/* Botão Devolver navega para tela de devolução com funcionário pré-selecionado */}
+                            {/* O ÚNICO LUGAR QUE MEXI FOI AQUI: */}
                             <button
-                              onClick={() => navigate(`/devolucao?empId=${id}&empName=${encodeURIComponent(funcionario?.name || "")}`)}
+                              onClick={() => navigate(`/devolucao?empId=${id}&saidaId=${saida.id}`)}
                               style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--success)", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                               <IconCheckCircle size={11}/> Devolver
                             </button>

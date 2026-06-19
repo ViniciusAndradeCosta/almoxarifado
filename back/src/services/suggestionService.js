@@ -89,8 +89,6 @@ export async function gerarSugestoes() {
       status = "ABAIXO_MARGEM";
     } else if (limiteAtencao > 0 && item.quantity <= limiteAtencao) {
       status = "ATENCAO";
-    } else if (item.quantity < estoqueIdeal) {
-      status = "ESTOQUE_BAIXO";
     }
 
     return {

@@ -5,7 +5,7 @@ import { createItem, deleteItem, getItem, getItems, getItemsByName, updateItem }
 import { createEmployee, deleteEmployee, downloadNewEmployee, getEmployee, getEmployees, updateEmployee } from '../controllers/Employee/EmployeeController.js';
 import { getEmployeeCountByCompany, getEmployeeCountByDepartment } from '../controllers/Employee/CountEmployess.js';
 import { getEmployeesStartingToday } from '../controllers/Employee/NewEmployess.js';
-import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdrawals, getWithdrawalsOut, getWithdrawalsOutPlus, giveItem, returnItem, returnItemAndAddQuantity, updateWithdrawal, getWithdrawalsByItem, deleteItemWithWithdrawals, testAllWithdrawal, deleteAllWithdrawal } from '../controllers/Item/ItensOut.js';
+import { createWithdrawal, getAllWithdrawals, getItemOut, getItensOut, getWithdrawals, getWithdrawalsOut, getWithdrawalsOutPlus, giveItem, returnItem, returnItemAndAddQuantity, updateWithdrawal, getWithdrawalsByItem, deleteItemWithWithdrawals, testAllWithdrawal, deleteAllWithdrawal, getReturnStats } from '../controllers/Item/ItensOut.js';
 import { createStockEntry, getStockEntries, getStockEntriesByItem, deleteStockEntry } from '../controllers/Item/StockEntryController.js';
 import { createOrder, getOrders, getOrder, updateOrderStatus, receiveOrderItem, deleteOrder } from '../controllers/Item/OrderController.js';
 import { getReportByItem, getConsumptionReport, getStockSummary, exportCSV } from '../controllers/Item/ReportController.js';
@@ -13,6 +13,10 @@ import { getSuggestions, updateMinStock, updateMinStockBatch } from '../controll
 import { getAlerts, getAlertByItem, getAlertCount } from '../controllers/Item/AlertController.js';
 import { createDiscard, getDiscarded, getDiscardedByItem, getDiscardReport, deleteDiscard } from '../controllers/Item/DiscardController.js';
 import { sendToLaundry, returnFromLaundry, getPending, getLaundryHistory, getLaundryRecord } from '../controllers/Item/LaundryController.js';
+import { uploadInvoiceMiddleware } from '../config/upload.js';
+import { uploadInvoice, getInvoices, downloadInvoice, deleteInvoice, extractInvoiceData } from '../controllers/Invoice/InvoiceController.js';
+
+
 
 const routes = Router();
 
@@ -69,12 +73,21 @@ routes.get('/testallwithdrawal', testAllWithdrawal);
 routes.get('/getallwithdrawals', getAllWithdrawals);
 routes.post('/newwithdrawal', createWithdrawal)
 routes.delete('/deleteallwithdrawal/:id', deleteAllWithdrawal);
+routes.get('/getreturnstats', getReturnStats);
+
 
 //ROTAS DE ENTRADA DE ESTOQUE
 routes.post('/stockentry', createStockEntry);
 routes.get('/getstockentries', getStockEntries);
 routes.get('/getstockentries/:itemId', getStockEntriesByItem);
 routes.delete('/deletestockentry/:id', deleteStockEntry);
+
+//ROTAS DE NOTAS FISCAIS
+routes.post('/invoices/upload', uploadInvoiceMiddleware.single('file'), uploadInvoice);
+routes.get('/invoices', getInvoices);
+routes.get('/invoices/:id/download', downloadInvoice);
+routes.delete('/invoices/:id', deleteInvoice);
+routes.post('/invoices/extract', uploadInvoiceMiddleware.single('file'), extractInvoiceData);
 
 //ROTAS DE PEDIDOS DE UNIFORMES
 routes.post('/order', createOrder);
@@ -113,5 +126,6 @@ routes.post('/laundry/return/:id', returnFromLaundry);
 routes.get('/laundry/pending', getPending);
 routes.get('/laundry/all', getLaundryHistory);
 routes.get('/laundry/:id', getLaundryRecord);
+
 
 export default routes;

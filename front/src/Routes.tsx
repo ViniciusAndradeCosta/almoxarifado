@@ -21,6 +21,7 @@ import Descartados from "./pages/Item/Descartados";
 import Lavanderia from "./pages/Item/Lavanderia";
 import Hoje from "./pages/Dashboard/Hoje";
 import Devolucao from "./pages/Item/Devolucao";
+import NotasFiscais from "./pages/Item/NotasFiscais";
 
 const AppLayout = () => {
   return (
@@ -67,6 +68,7 @@ const AppRoutes = () => {
                 <Route path="/descartados" element={<Descartados />} />
                 <Route path="/lavanderia" element={<Lavanderia />} />
                 <Route path="/devolucao" element={<Devolucao />} />
+                <Route path="/notas-fiscais" element={<NotasFiscais />} />
               </Route>
             </Route>
           </Routes>

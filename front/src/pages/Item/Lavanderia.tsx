@@ -59,6 +59,7 @@ const Lavanderia = () => {
     const [funcionarios, setFuncionarios]               = useState<{id: number; name: string; role: string; department: string}[]>([]);
     const [filteredFuncs, setFilteredFuncs]             = useState<{id: number; name: string; role: string; department: string}[]>([]);
     const [showFuncDropdown, setShowFuncDropdown]       = useState(false);
+    const [highlightedFuncIndex, setHighlightedFuncIndex] = useState(-1);
 
     useEffect(() => {
         fetchPendentes();
@@ -113,8 +114,8 @@ const Lavanderia = () => {
         setFilteredItems([]);
     };
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSend = async (e?: React.FormEvent | React.MouseEvent) => {
+        e?.preventDefault();
         if (!selectedItemId) { window.alert("Selecione um item!"); return; }
         if (quantity <= 0)   { window.alert("Quantidade inválida!"); return; }
         // Ajuste 4: valida nome do funcionário quando tipo for FUNCIONARIO
@@ -343,6 +344,7 @@ const Lavanderia = () => {
                                         onChange={e => {
                                             const val = e.target.value;
                                             setNomeFuncionario(val);
+                                            setHighlightedFuncIndex(-1);
                                             if (val.length > 0) {
                                                 const termo = val.toLowerCase().trim();
                                                 const f = funcionarios.filter(f => {
@@ -358,7 +360,29 @@ const Lavanderia = () => {
                                             }
                                         }}
                                         onKeyDown={e => {
-                                            if (e.key === "Escape") setShowFuncDropdown(false);
+                                            if (!showFuncDropdown || filteredFuncs.length === 0) {
+                                                if (e.key === "Escape") setShowFuncDropdown(false);
+                                                return;
+                                            }
+                                            if (e.key === "ArrowDown") {
+                                                e.preventDefault();
+                                                setHighlightedFuncIndex(prev => Math.min(prev + 1, filteredFuncs.length - 1));
+                                            } else if (e.key === "ArrowUp") {
+                                                e.preventDefault();
+                                                setHighlightedFuncIndex(prev => Math.max(prev - 1, 0));
+                                            } else if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                if (highlightedFuncIndex >= 0) {
+                                                    const f = filteredFuncs[highlightedFuncIndex];
+                                                    setNomeFuncionario(f.name);
+                                                    setShowFuncDropdown(false);
+                                                    setFilteredFuncs([]);
+                                                    setHighlightedFuncIndex(-1);
+                                                }
+                                            } else if (e.key === "Escape") {
+                                                setShowFuncDropdown(false);
+                                                setHighlightedFuncIndex(-1);
+                                            }
                                         }}
                                         placeholder="Digite o nome do funcionário..."
                                         autoComplete="off"
@@ -372,7 +396,7 @@ const Lavanderia = () => {
                                             borderRadius: 6, overflow: "hidden",
                                             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                                         }}>
-                                            {filteredFuncs.map(f => (
+                                            {filteredFuncs.map((f, idx) => (
                                                 <li
                                                     key={f.id}
                                                     onMouseDown={e => {
@@ -380,14 +404,16 @@ const Lavanderia = () => {
                                                         setNomeFuncionario(f.name);
                                                         setShowFuncDropdown(false);
                                                         setFilteredFuncs([]);
+                                                        setHighlightedFuncIndex(-1);
                                                     }}
+                                                    onMouseEnter={() => setHighlightedFuncIndex(idx)}
                                                     style={{
                                                         padding: "8px 12px", cursor: "pointer",
                                                         borderBottom: "1px solid var(--border)",
                                                         transition: "background 0.1s",
+                                                        background: idx === highlightedFuncIndex ? "var(--brand)" : "transparent",
+                                                        color: idx === highlightedFuncIndex ? "#fff" : "var(--text-primary)",
                                                     }}
-                                                    onMouseEnter={e => (e.currentTarget.style.background = "var(--brand)", e.currentTarget.style.color = "#fff")}
-                                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent", e.currentTarget.style.color = "var(--text-primary)")}
                                                 >
                                                     <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{f.name}</div>
                                                     <div style={{ fontSize: "0.68rem", color: "inherit", opacity: 0.75 }}>
@@ -404,7 +430,7 @@ const Lavanderia = () => {
                             </div>
                         )}
 
-                        <form onSubmit={handleSend}>
+                        <div>
                             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                                 <div>
                                     <label style={lbl}>Item</label>
@@ -459,11 +485,16 @@ const Lavanderia = () => {
                                 </div>
                             </div>
                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                <button type="submit" className="btn btn-primary" style={{ padding: "8px 28px" }}>
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleSend(e as any)}
+                                    className="btn btn-primary"
+                                    style={{ padding: "8px 28px", position: "relative", zIndex: 1 }}
+                                >
                                     Enviar para Lavanderia
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
             )}

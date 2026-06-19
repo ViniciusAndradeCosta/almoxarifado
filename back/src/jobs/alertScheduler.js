@@ -4,11 +4,22 @@ import nodemailer from "nodemailer";
 import prisma from "../database/client.js";
 
 const HORARIO_RESUMO = 8;
+const DIA_SEMANA_RESUMO = 1; // 0=Domingo, 1=Segunda, 2=Terça... — resumo toda segunda-feira
 const INTERVALO_VERIFICACAO_MS = 2 * 60 * 1000;
 
 // null = primeira execução ainda não aconteceu
 let estadoAnterior = null;
-let ultimoDiaResumo = null;
+let ultimaSemanaResumo = null; // armazena ano-semana (ex: "2026-W25") do último resumo enviado
+
+// Calcula o número da semana ISO do ano para uma data
+function getSemanaISO(data) {
+  const d = new Date(Date.UTC(data.getFullYear(), data.getMonth(), data.getDate()));
+  const diaSemana = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - diaSemana);
+  const inicioAno = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const semana = Math.ceil((((d - inicioAno) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${semana}`;
+}
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -155,20 +166,24 @@ async function verificarAlertas() {
     const mapaAtual = getAlertasComoMapa(resultado.alertas);
 
     // ── RESUMO DIÁRIO às 8h — apenas uma vez por dia ──
-    if (horaAtual >= HORARIO_RESUMO && ultimoDiaResumo !== diaAtual) {
-      ultimoDiaResumo = diaAtual; // marca ANTES para não duplicar mesmo em caso de erro
+    // ── RESUMO SEMANAL toda segunda-feira às 8h ──
+    const diaSemanaAtual = agora.getDay(); // 0=Dom, 1=Seg, 2=Ter...
+    const semanaAtual = getSemanaISO(agora);
+
+    if (diaSemanaAtual === DIA_SEMANA_RESUMO && horaAtual >= HORARIO_RESUMO && ultimaSemanaResumo !== semanaAtual) {
+      ultimaSemanaResumo = semanaAtual; // marca ANTES para não duplicar mesmo em caso de erro
       const dataFormatada = agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
       const horaFormatada = agora.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 
       if (resultado.totalAlertas > 0) {
-        console.log(`[Scheduler] Enviando resumo diário (${resultado.totalAlertas} alertas)...`);
+        console.log(`[Scheduler] Enviando resumo semanal (${resultado.totalAlertas} alertas)...`);
         await enviarEmailAlerta(
           resultado.alertas,
-          `📋 Resumo Diário ${dataFormatada} — Estoque Almoxarifado [${horaFormatada}]`
+          `📋 Resumo Semanal ${dataFormatada} — Estoque Almoxarifado [${horaFormatada}]`
         );
-        console.log("[Scheduler] Resumo diário enviado.");
+        console.log("[Scheduler] Resumo semanal enviado.");
       } else {
-        console.log("[Scheduler] Resumo diário: estoque saudável, sem alertas.");
+        console.log("[Scheduler] Resumo semanal: estoque saudável, sem alertas.");
       }
     }
 
@@ -221,7 +236,7 @@ async function verificarAlertas() {
 }
 
 export function iniciarScheduler() {
-  console.log(`[Scheduler] Iniciado. Resumo diário às ${HORARIO_RESUMO}h. Verificação a cada ${INTERVALO_VERIFICACAO_MS / 60000} min.`);
+  console.log(`[Scheduler] Iniciado. Resumo semanal toda segunda-feira às ${HORARIO_RESUMO}h. Verificação a cada ${INTERVALO_VERIFICACAO_MS / 60000} min.`);
   // Primeira verificação em 15s (só registra estado inicial)
   setTimeout(verificarAlertas, 15000);
   // Verificações subsequentes
