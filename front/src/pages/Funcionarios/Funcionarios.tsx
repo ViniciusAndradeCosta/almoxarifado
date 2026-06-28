@@ -4,9 +4,9 @@ import api from "../../services/useApi";
 import Papa from "papaparse";
 import { Employee } from "../../types/Employee";
 import { formatDate } from "../../utils/dateFunctions";
-import { UNIFORMES_POR_SETOR, SETORES_DISPONIVEIS } from "../../constants/uniformesPorSetor";
+import { UNIFORMES_POR_SETOR, SETORES_DISPONIVEIS, FUNCOES_POR_SETOR, UNIFORMES_POR_FUNCAO } from "../../constants/uniformesPorSetor";
 import { company } from "./EmployeeTypes";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   IconUsers, IconPlus, IconEdit, IconTrash, IconSearch,
   IconX, IconDownload, IconCheckCircle, IconArrowRight, IconPackage,
@@ -30,13 +30,6 @@ interface EntregaItem {
 }
 
 // Item do kit pré-carregado — aguarda tamanho do usuário para vincular ao estoque
-interface TrocaItem {
-  nomeKit: string;
-  acao: "DEVOLVER" | "MANTER" | "NOVO";
-  motivo: string;
-  destinoDevolucao: "ESTOQUE" | "DESCARTE"; // só relevante quando acao === DEVOLVER
-}
-
 interface KitItemForm {
   nomeKit: string;       // nome da planilha (ex: "CAMISA")
   ca?: string;           // CA do EPI (se aplicável)
@@ -44,6 +37,18 @@ interface KitItemForm {
   qtde: number;          // quantidade padrão do kit
   tamanho: string;       // preenchido pelo usuário
   itemVinculado: ItemEstoque | null;  // item encontrado no estoque com aquele nome+tamanho
+}
+
+interface TrocaItem {
+  nomeKit: string;                      // item antigo (DEVOLVER/MANTER/ESCOLHA) ou novo (NOVO)
+  nomeKitNovo?: string;                 // apenas ESCOLHA: item correspondente no novo setor
+  acao: "DEVOLVER" | "MANTER" | "NOVO" | "ESCOLHA";
+  motivo: string;
+  destinoDevolucao: "ESTOQUE" | "DESCARTE";
+  escolha?: "MANTER" | "TROCAR";        // apenas ESCOLHA: decisão do usuário
+  qtde: number;                        // quantidade definida pelo kit
+  tamanho: string;                     // tamanho informado pelo usuário (itens "NOVO" e "ESCOLHA"→TROCAR)
+  itemVinculado: ItemEstoque | null;   // item do estoque vinculado por nome+tamanho
 }
 
 const emptyForm = {
@@ -55,7 +60,7 @@ const Funcionarios = () => {
   const [funcionarios, setFuncionarios]   = useState<Employee[]>([]);
   const [filtered, setFiltered]           = useState<Employee[]>([]);
   const [loading, setLoading]             = useState(true);
-  const [roles, setRoles]                 = useState<string[]>([]);
+  const [, setRoles]                      = useState<string[]>([]);
   // departments removido — departamento agora usa SETORES_DISPONIVEIS
   const [todosItems, setTodosItems]       = useState<ItemEstoque[]>([]);
 
@@ -68,6 +73,7 @@ const Funcionarios = () => {
   const [modo, setModo]                   = useState<Modo>("cadastro");
   const [selected, setSelected]           = useState<Employee | null>(null);
   const [form, setForm]                   = useState(emptyForm);
+  const [cargoCustomizado, setCargoCustomizado] = useState(false);
   const [saidas, setSaidas]               = useState<WithdrawalItem[]>([]);
   const [saving, setSaving]               = useState(false);
   const panelRef                          = useRef<HTMLDivElement>(null);
@@ -82,9 +88,9 @@ const Funcionarios = () => {
   // Troca de função
   const [novoDepartamento, setNovoDepartamento]           = useState("");
   const [novoCargo, setNovoCargo]                         = useState("");
+  const [novoCargoCustomizado, setNovoCargoCustomizado]   = useState(false);
   const [itensTroca, setItensTroca]                       = useState<TrocaItem[]>([]);
   const [salvandoTroca, setSalvandoTroca]                 = useState(false);
-  const [todosItensEstoque, setTodosItensEstoque]         = useState<ItemEstoque[]>([]);
   const [dropdownPos, setDropdownPos]                     = useState<{ top: number; left: number; width: number } | null>(null);
   const [highlightedIndex, setHighlightedIndex]           = useState<number>(-1);
   const primeiroItemInputRef                              = useRef<HTMLInputElement>(null);
@@ -111,14 +117,19 @@ const Funcionarios = () => {
     item?.scrollIntoView({ block: "nearest" });
   }, [highlightedIndex]);
 
-  // Abre modal de cadastro automaticamente se vier de ?novo=true
-    useEffect(() => {
-      const params = new URLSearchParams(location.search);
-      if (params.get("novo") === "true") {
-        setModo("cadastro");
-        setPanelOpen(true);
-      }
-    }, [location.search]);
+  // Abre modal de cadastro ou troca automaticamente via URL
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("novo") === "true" && !panelOpen) {
+      setModo("cadastro"); setPanelOpen(true); return;
+    }
+    const trocarId = params.get("trocar");
+    if (trocarId && funcionarios.length > 0 && !panelOpen) {
+      const emp = funcionarios.find((e: Employee) => e.id === Number(trocarId));
+      if (emp) { openTroca(emp); window.history.replaceState({}, "", window.location.pathname); }
+    }
+  }, [location.search, funcionarios]);
 
   const fetchAll = async () => {
     try {
@@ -140,6 +151,7 @@ const Funcionarios = () => {
   // ── Painel handlers ──
   const openCadastro = () => {
     setForm(emptyForm);
+    setCargoCustomizado(false);
     setSelected(null);
     setEntregaItens([]);
     setPrimeiroItemSearch("");
@@ -152,6 +164,8 @@ const Funcionarios = () => {
 
   const openEdicao = (emp: Employee) => {
     setSelected(emp);
+    const funcoesDoSetor = FUNCOES_POR_SETOR[emp.department || ""];
+    setCargoCustomizado(!!(emp.role && funcoesDoSetor && !funcoesDoSetor.includes(emp.role)));
     setForm({
       name: emp.name || "",
       company: emp.company || "",
@@ -166,24 +180,13 @@ const Funcionarios = () => {
     setPanelOpen(true);
   };
 
-  const openSaidas = async (emp: Employee) => {
-    setSelected(emp);
-    setModo("saidas");
-    setPanelOpen(true);
-    try {
-      const res = await api.get("/getwithdrawalsout");
-      const filtradas = (res.data || []).filter((s: any) =>
-        s.employee?.id === emp.id || s.employeeId === emp.id
-      );
-      setSaidas(filtradas);
-    } catch (e) { setSaidas([]); }
-  };
-
   const openTroca = (emp: Employee) => {
     setSelected(emp);
     setNovoDepartamento(emp.department || "");
     setNovoCargo(emp.role || "");
-    setItensTroca([]);
+    const funcoesDoSetor = FUNCOES_POR_SETOR[emp.department || ""];
+    setNovoCargoCustomizado(!!(emp.role && funcoesDoSetor && !funcoesDoSetor.includes(emp.role)));
+    setItensTroca(emp.department ? calcularDiferencaKit(emp.department, emp.department) : []);
     setModo("troca");
     setPanelOpen(true);
   };
@@ -193,108 +196,117 @@ const Funcionarios = () => {
     const kitNovo   = UNIFORMES_POR_SETOR[deptNovo];
     const itensAntigos = [...(kitAntigo?.uniformes || []), ...(kitAntigo?.epis || [])];
     const itensNovos   = [...(kitNovo?.uniformes   || []), ...(kitNovo?.epis   || [])];
-    const GENERICOS    = ["CAMISA", "CALÇA", "MOLETON", "CALÇADO"];
-    const ehGenerico   = (nome: string) => GENERICOS.some(g => nome.toUpperCase().includes(g));
+    // Categorias "genéricas" — itens que existem nos dois setores mas podem ter cor/modelo diferente.
+    // Quando o setor novo tiver um item da mesma categoria (mas não o MESMO item), a decisão de
+    // manter a peça antiga ou trocar por uma nova fica com o usuário (depende do desgaste da peça).
+    const CATEGORIAS  = ["CAMISA", "CALÇA", "MOLETOM", "CALÇADO"];
+    const categoriaDe = (nome: string) => CATEGORIAS.find(c => nome.toUpperCase().includes(c)) || null;
     const resultado: TrocaItem[] = [];
+    const novosPareados = new Set<string>(); // nomes (novo setor) já tratados via MANTER/ESCOLHA — não duplicar em "NOVO"
+
     itensAntigos.forEach(item => {
-      const noNovo = itensNovos.some(n => n.nome.toUpperCase() === item.nome.toUpperCase());
-      if (noNovo) {
-        resultado.push({ nomeKit: item.nome, acao: "MANTER", motivo: "Presente nos dois kits", destinoDevolucao: "ESTOQUE" });
-      } else if (ehGenerico(item.nome)) {
-        resultado.push({ nomeKit: item.nome, acao: "MANTER", motivo: "Item genérico — mantido", destinoDevolucao: "ESTOQUE" });
+      // 1) Item idêntico também existe no novo setor → mantém sem perguntar nada
+      const exato = itensNovos.find(n => n.nome.toUpperCase() === item.nome.toUpperCase());
+      if (exato) {
+        resultado.push({ nomeKit: item.nome, acao: "MANTER", motivo: "Presente nos dois kits", destinoDevolucao: "ESTOQUE", qtde: item.qtde || 1, tamanho: "", itemVinculado: null });
+        novosPareados.add(exato.nome.toUpperCase());
+        return;
+      }
+      // 2) Mesma categoria (ex: CAMISA), mas item diferente do novo setor (ex: cor diferente) → perguntar
+      const cat = categoriaDe(item.nome);
+      const correspondente = cat
+        ? itensNovos.find(n => categoriaDe(n.nome) === cat && !novosPareados.has(n.nome.toUpperCase()))
+        : null;
+      if (correspondente) {
+        resultado.push({
+          nomeKit: item.nome, nomeKitNovo: correspondente.nome,
+          acao: "ESCOLHA", motivo: "Mesma categoria no novo setor — decida pelo desgaste da peça",
+          destinoDevolucao: "ESTOQUE", escolha: "MANTER",
+          qtde: correspondente.qtde || 1, tamanho: "", itemVinculado: null,
+        });
+        novosPareados.add(correspondente.nome.toUpperCase());
       } else {
-        resultado.push({ nomeKit: item.nome, acao: "DEVOLVER", motivo: "Exclusivo da função anterior", destinoDevolucao: "ESTOQUE" });
+        // 3) Sem equivalente no novo setor → devolver/descartar
+        resultado.push({ nomeKit: item.nome, acao: "DEVOLVER", motivo: "Exclusivo da função anterior", destinoDevolucao: "ESTOQUE", qtde: item.qtde || 1, tamanho: "", itemVinculado: null });
       }
     });
+
     itensNovos.forEach(item => {
-      const noAntigo = itensAntigos.some(a => a.nome.toUpperCase() === item.nome.toUpperCase());
-      if (!noAntigo) {
-        resultado.push({ nomeKit: item.nome, acao: "NOVO", motivo: "Novo item para esta função", destinoDevolucao: "ESTOQUE" });
-      }
+      if (novosPareados.has(item.nome.toUpperCase())) return; // já coberto por MANTER ou ESCOLHA acima
+      resultado.push({ nomeKit: item.nome, acao: "NOVO", motivo: "Novo item para esta função", destinoDevolucao: "ESTOQUE", qtde: item.qtde || 1, tamanho: "", itemVinculado: null });
     });
+
     return resultado;
+  };
+
+  const definirEscolhaTroca = (nomeKit: string, escolha: "MANTER" | "TROCAR") => {
+    setItensTroca(prev => prev.map(i => (i.nomeKit === nomeKit && i.acao === "ESCOLHA") ? { ...i, escolha, tamanho: "", itemVinculado: null } : i));
   };
 
   const setDestinoDevolucao = (nomeKit: string, destino: "ESTOQUE" | "DESCARTE") => {
     setItensTroca(prev => prev.map(i => i.nomeKit === nomeKit ? { ...i, destinoDevolucao: destino } : i));
   };
 
+  // Atualiza o tamanho de um item NOVO (ou de um item ESCOLHA marcado p/ trocar) e vincula ao estoque se encontrar
+  const atualizarTamanhoTroca = (nomeKit: string, tamanho: string) => {
+    setItensTroca(prev => prev.map(item => {
+      if (item.nomeKit !== nomeKit || (item.acao !== "NOVO" && item.acao !== "ESCOLHA")) return item;
+      const nomeBusca = item.acao === "ESCOLHA" ? (item.nomeKitNovo || item.nomeKit) : item.nomeKit;
+      const tam = tamanho.toUpperCase().trim();
+      const encontrado = tam
+        ? todosItems.find(est =>
+            est.name.toUpperCase().includes(nomeBusca.toUpperCase()) &&
+            est.size?.toUpperCase().trim() === tam
+          ) || null
+        : null;
+      return { ...item, tamanho, itemVinculado: encontrado };
+    }));
+  };
+
   const handleTrocarFuncao = async () => {
     if (!selected || !novoDepartamento) { window.alert("Selecione o novo departamento."); return; }
-    const itensDevolver = itensTroca.filter(i => i.acao === "DEVOLVER");
-    const itensNovos    = itensTroca.filter(i => i.acao === "NOVO");
-
+    const itensDevolver = itensTroca.filter(i => i.acao === "DEVOLVER" || (i.acao === "ESCOLHA" && i.escolha === "TROCAR"));
+    const itensNovos    = itensTroca.filter(i => i.acao === "NOVO" || (i.acao === "ESCOLHA" && i.escolha === "TROCAR"));
     if (!window.confirm(
       "Confirmar troca de função de " + selected.name + "?" +
       "\n\nDe: " + selected.department + " → " + selected.role +
       "\nPara: " + novoDepartamento + " → " + (novoCargo || selected.role) +
       (itensDevolver.length > 0 ? "\n\nItens a devolver: " + itensDevolver.map(i => i.nomeKit).join(", ") : "") +
-      (itensNovos.length > 0 ? "\nItens novos a entregar: " + itensNovos.map(i => i.nomeKit).join(", ") : "")
+      (itensNovos.length > 0 ? "\nItens novos a entregar: " + itensNovos.map(i => i.nomeKitNovo || i.nomeKit).join(", ") : "")
     )) return;
-
     try {
       setSalvandoTroca(true);
-
-      // 1. Atualizar departamento e cargo
       await api.put("/employee/" + selected.id, {
         name: selected.name, company: selected.company,
         role: novoCargo || selected.role, department: novoDepartamento,
         admissionDate: selected.admissionDate,
         shirt_size: selected.shirt_size, pants_size: selected.pants_size, shoes_size: selected.shoes_size,
       });
-
-      // 2. Devolver itens exclusivos da função anterior
       const saidasRes = await api.get("/getitemsout/" + selected.id);
       const saidasAtivas = saidasRes.data || [];
-
       for (const itemTroca of itensDevolver) {
         const primeiraP = itemTroca.nomeKit.split(" ")[0].toUpperCase();
         const saida = saidasAtivas.find((s: any) => s.item?.name?.toUpperCase().includes(primeiraP));
         if (saida) {
           if (itemTroca.destinoDevolucao === "DESCARTE") {
-            // Remove da ficha sem devolver ao estoque + registra descarte
             await api.delete("/returnitem/" + saida.id);
-            await api.post("/discard", {
-              itemId: saida.item.id, quantity: saida.quantity,
-              reason: "TROCA_FUNCAO",
-              notes: "Descarte por troca de função: " + selected.department + " → " + novoDepartamento,
-              discardedBy: selected.name, discardDate: new Date().toISOString(),
-            });
+            await api.post("/discard", { itemId: saida.item.id, quantity: saida.quantity, reason: "TROCA_FUNCAO", notes: "Descarte por troca de função: " + selected.department + " → " + novoDepartamento, discardedBy: selected.name, discardDate: new Date().toISOString() });
           } else {
-            // Devolve ao estoque
             await api.delete("/returnitemandaddquantity/" + saida.id);
           }
         }
       }
-
-      // 3. Registrar saídas dos novos itens do kit
       for (const itemNovo of itensNovos) {
-        const primeiraP = itemNovo.nomeKit.split(" ")[0].toUpperCase();
-        const itemEstoque = todosItensEstoque.find(i => i.name.toUpperCase().includes(primeiraP));
-        if (itemEstoque && itemEstoque.quantity > 0) {
-          await api.post("/giveitem", {
-            employeeId: selected.id, itemId: itemEstoque.id,
-            quantity: 1, withdrawalDate: new Date().toISOString(),
-          });
+        if (itemNovo.itemVinculado && itemNovo.itemVinculado.quantity > 0) {
+          await api.post("/giveitem", { employeeId: selected.id, itemId: itemNovo.itemVinculado.id, quantity: itemNovo.qtde, withdrawalDate: new Date().toISOString() });
         }
       }
-
-      const resumo = [
-        "Troca de função registrada com sucesso!",
-        "Departamento: " + novoDepartamento,
-        itensDevolver.length > 0 ? itensDevolver.length + " item(ns) devolvido(s)" : "",
-        itensNovos.filter(i => todosItensEstoque.find(e => e.name.toUpperCase().includes(i.nomeKit.split(" ")[0].toUpperCase()) && e.quantity > 0)).length > 0
-          ? "Novos itens entregues automaticamente" : "",
-      ].filter(Boolean).join("\n");
-      window.alert(resumo);
-
+      window.alert("Troca de função registrada!\n" + novoDepartamento + (itensDevolver.length > 0 ? "\n" + itensDevolver.length + " item(ns) devolvido(s)" : ""));
       closePanel();
       fetchAll();
     } catch(e: any) {
       window.alert(e.response?.data?.error || "Erro ao registrar troca de função.");
-    } finally {
-      setSalvandoTroca(false);
-    }
+    } finally { setSalvandoTroca(false); }
   };
 
   const closePanel = () => {
@@ -311,7 +323,12 @@ const Funcionarios = () => {
   const setField = (k: string, v: string) => {
     setForm(f => ({ ...f, [k]: v }));
 
-    if (k === "department" && modo === "cadastro") {
+    if (modo !== "cadastro") return;
+
+    // Ao mudar departamento: limpar cargo e pré-carregar kit do setor
+    if (k === "department") {
+      setForm(f => ({ ...f, [k]: v, role: "" }));
+      setCargoCustomizado(false);
       if (v && UNIFORMES_POR_SETOR[v]) {
         const kit = UNIFORMES_POR_SETOR[v];
         const novosItens: KitItemForm[] = [
@@ -319,11 +336,27 @@ const Funcionarios = () => {
           ...kit.epis.map(e => ({ nomeKit: e.nome, ca: e.ca, tipo: "epi" as const, qtde: e.qtde, tamanho: "", itemVinculado: null })),
         ];
         setKitItensForm(novosItens);
-        setEntregaItens([]); // limpa entrega anterior
+        setEntregaItens([]);
       } else {
         setKitItensForm([]);
         setEntregaItens([]);
       }
+      return;
+    }
+
+    // Ao mudar cargo: refinar kit com base na função específica
+    if (k === "role" && v && UNIFORMES_POR_FUNCAO[v]) {
+      setForm(prev => {
+        const kitSetor = UNIFORMES_POR_SETOR[prev.department];
+        const kitFuncao = UNIFORMES_POR_FUNCAO[v];
+        const novosItens: KitItemForm[] = [
+          ...kitFuncao.uniformes.map(u => ({ nomeKit: u.nome, ca: undefined, tipo: "uniforme" as const, qtde: u.qtde, tamanho: "", itemVinculado: null })),
+          ...(kitFuncao.epis || kitSetor?.epis || []).map((e: any) => ({ nomeKit: e.nome, ca: e.ca, tipo: "epi" as const, qtde: e.qtde, tamanho: "", itemVinculado: null })),
+        ];
+        setKitItensForm(novosItens);
+        setEntregaItens([]);
+        return { ...prev, [k]: v };
+      });
     }
   };
 
@@ -752,8 +785,40 @@ const Funcionarios = () => {
                         </div>
                         <div>
                           <label style={lbl}>Cargo</label>
-                          <input className="form-control" value={form.role} onChange={e => setField("role", e.target.value)} placeholder="Ex: Auxiliar" list="role-list" autoComplete="off"/>
-                          <datalist id="role-list">{roles.map(r => <option key={r} value={r}/>)}</datalist>
+                          {FUNCOES_POR_SETOR[form.department] && !cargoCustomizado ? (
+                            <>
+                              <select
+                                className="form-select"
+                                value={form.role}
+                                onChange={e => setField("role", e.target.value)}
+                              >
+                                <option value="">Selecione o cargo...</option>
+                                {FUNCOES_POR_SETOR[form.department].map(f => (
+                                  <option key={f} value={f}>{f}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => { setCargoCustomizado(true); setField("role", ""); }}
+                                style={{ background: "none", border: "none", padding: 0, marginTop: 5, fontSize: "0.68rem", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}
+                              >
+                                Outro cargo (não listado)
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <input className="form-control" value={form.role} onChange={e => setField("role", e.target.value)} placeholder="Ex: Auxiliar" autoComplete="off"/>
+                              {FUNCOES_POR_SETOR[form.department] && (
+                                <button
+                                  type="button"
+                                  onClick={() => { setCargoCustomizado(false); setField("role", ""); }}
+                                  style={{ background: "none", border: "none", padding: 0, marginTop: 5, fontSize: "0.68rem", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}
+                                >
+                                  Selecionar da lista
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -969,24 +1034,16 @@ const Funcionarios = () => {
               {/* ── TROCA DE FUNÇÃO ── */}
               {modo === "troca" && selected && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                  {/* Função atual */}
                   <div style={{ padding: "12px 16px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8 }}>
                     <div style={{ fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase" as const, color: "var(--text-muted)", marginBottom: 4 }}>Função Atual</div>
                     <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{selected.department}</div>
                     <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{selected.role}</div>
                   </div>
-
-                  {/* Nova função */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
                       <label style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Novo Departamento *</label>
                       <select className="form-select" value={novoDepartamento}
-                        onChange={e => {
-                          const v = e.target.value;
-                          setNovoDepartamento(v);
-                          setItensTroca(v && selected.department ? calcularDiferencaKit(selected.department, v) : []);
-                        }}>
+                        onChange={e => { const v = e.target.value; setNovoDepartamento(v); setItensTroca(v && selected.department ? calcularDiferencaKit(selected.department, v) : []); }}>
                         <option value="">Selecione...</option>
                         {SETORES_DISPONIVEIS.map(s => <option key={s} value={s}>{s}</option>)}
                         <option value="OUTRO">OUTRO</option>
@@ -994,31 +1051,49 @@ const Funcionarios = () => {
                     </div>
                     <div>
                       <label style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const, color: "var(--text-secondary)", marginBottom: 5, display: "block" }}>Novo Cargo</label>
-                      <input className="form-control" value={novoCargo} onChange={e => setNovoCargo(e.target.value)} placeholder="Ex: Operador de Caixa"/>
+                      {FUNCOES_POR_SETOR[novoDepartamento] && !novoCargoCustomizado ? (
+                        <>
+                          <select className="form-select" value={novoCargo} onChange={e => setNovoCargo(e.target.value)}>
+                            <option value="">Selecione o cargo...</option>
+                            {FUNCOES_POR_SETOR[novoDepartamento].map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => { setNovoCargoCustomizado(true); setNovoCargo(""); }}
+                            style={{ background: "none", border: "none", padding: 0, marginTop: 5, fontSize: "0.68rem", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}
+                          >
+                            Outro cargo (não listado)
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <input className="form-control" value={novoCargo} onChange={e => setNovoCargo(e.target.value)} placeholder="Ex: Operador de Caixa"/>
+                          {FUNCOES_POR_SETOR[novoDepartamento] && (
+                            <button
+                              type="button"
+                              onClick={() => { setNovoCargoCustomizado(false); setNovoCargo(""); }}
+                              style={{ background: "none", border: "none", padding: 0, marginTop: 5, fontSize: "0.68rem", color: "var(--brand)", cursor: "pointer", textDecoration: "underline" }}
+                            >
+                              Selecionar da lista
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
-
-                  {/* Análise */}
                   {itensTroca.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-                      {/* DEVOLVER — com seletor Estoque/Descarte */}
                       {itensTroca.filter(i => i.acao === "DEVOLVER").length > 0 && (
                         <div>
                           <div style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase" as const, color: "var(--danger)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                            <IconCornerDownLeft size={12} color="var(--danger)"/>
-                            Devolver ({itensTroca.filter(i => i.acao === "DEVOLVER").length}) — selecione o destino
+                            <IconCornerDownLeft size={12} color="var(--danger)"/> Devolver ({itensTroca.filter(i => i.acao === "DEVOLVER").length}) — selecione o destino
                           </div>
                           {itensTroca.filter(i => i.acao === "DEVOLVER").map((item, idx) => (
                             <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center", padding: "8px 12px", background: "var(--danger-subtle)", border: "1px solid var(--danger)", borderRadius: 6, marginBottom: 6 }}>
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.nomeKit}</div>
-                                <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{item.motivo}</div>
-                              </div>
+                              <div><div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.nomeKit}</div><div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{item.motivo}</div></div>
                               <div style={{ display: "flex", gap: 5 }}>
                                 {(["ESTOQUE", "DESCARTE"] as const).map(dest => (
-                                  <button key={dest} type="button"
-                                    onClick={() => setDestinoDevolucao(item.nomeKit, dest)}
+                                  <button key={dest} type="button" onClick={() => setDestinoDevolucao(item.nomeKit, dest)}
                                     style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: "0.68rem", fontWeight: 700, border: `1px solid ${item.destinoDevolucao === dest ? (dest === "ESTOQUE" ? "var(--success)" : "var(--danger)") : "var(--border)"}`, background: item.destinoDevolucao === dest ? (dest === "ESTOQUE" ? "var(--success)" : "var(--danger)") : "var(--surface)", color: item.destinoDevolucao === dest ? "#fff" : "var(--text-secondary)" }}>
                                     {dest === "ESTOQUE" ? "Estoque" : "Descartar"}
                                   </button>
@@ -1028,56 +1103,153 @@ const Funcionarios = () => {
                           ))}
                         </div>
                       )}
-
-                      {/* MANTER */}
                       {itensTroca.filter(i => i.acao === "MANTER").length > 0 && (
                         <div>
                           <div style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase" as const, color: "var(--success)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-                            <IconCheckCircle size={12} color="var(--success)"/>
-                            Manter ({itensTroca.filter(i => i.acao === "MANTER").length})
+                            <IconCheckCircle size={12} color="var(--success)"/> Manter ({itensTroca.filter(i => i.acao === "MANTER").length})
                           </div>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                             {itensTroca.filter(i => i.acao === "MANTER").map((item, idx) => (
-                              <span key={idx} style={{ padding: "3px 10px", borderRadius: 4, background: "var(--success-subtle)", border: "1px solid var(--success)", fontSize: "0.72rem", fontWeight: 600, color: "var(--success)" }}>
-                                {item.nomeKit}
-                              </span>
+                              <span key={idx} style={{ padding: "3px 10px", borderRadius: 4, background: "var(--success-subtle)", border: "1px solid var(--success)", fontSize: "0.72rem", fontWeight: 600, color: "var(--success)" }}>{item.nomeKit}</span>
                             ))}
                           </div>
                         </div>
                       )}
-
-                      {/* NOVOS — saída automática */}
+                      {itensTroca.filter(i => i.acao === "ESCOLHA").length > 0 && (
+                        <div>
+                          <div style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase" as const, color: "var(--warning)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                            <IconRefreshCw size={12} color="var(--warning)"/> Mesma Categoria — manter ou trocar ({itensTroca.filter(i => i.acao === "ESCOLHA").length})
+                          </div>
+                          <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", margin: "0 0 8px" }}>
+                            O novo setor usa uma versão diferente desses itens. Decida pelo estado de uso de cada peça.
+                          </p>
+                          {itensTroca.filter(i => i.acao === "ESCOLHA").map((item, idx) => {
+                            const trocar = item.escolha === "TROCAR";
+                            const temTamanho = item.tamanho.trim() !== "";
+                            const vinculado = item.itemVinculado;
+                            const semEstoque = temTamanho && !vinculado;
+                            const estoqueBaixo = !!vinculado && vinculado.quantity < item.qtde;
+                            return (
+                              <div key={idx} style={{ padding: "8px 10px", marginBottom: 6, border: "1px solid var(--warning)", borderRadius: 6, background: "var(--warning-subtle, #fff9ec)" }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "center" }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.nomeKit} <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>→</span> {item.nomeKitNovo}</div>
+                                    <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>{item.motivo}</div>
+                                  </div>
+                                  <div style={{ display: "flex", gap: 5 }}>
+                                    <button type="button" onClick={() => definirEscolhaTroca(item.nomeKit, "MANTER")}
+                                      style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: "0.68rem", fontWeight: 700, border: `1px solid ${!trocar ? "var(--success)" : "var(--border)"}`, background: !trocar ? "var(--success)" : "var(--surface)", color: !trocar ? "#fff" : "var(--text-secondary)" }}>
+                                      Manter peça atual
+                                    </button>
+                                    <button type="button" onClick={() => definirEscolhaTroca(item.nomeKit, "TROCAR")}
+                                      style={{ padding: "4px 10px", borderRadius: 5, cursor: "pointer", fontSize: "0.68rem", fontWeight: 700, border: `1px solid ${trocar ? "var(--info)" : "var(--border)"}`, background: trocar ? "var(--info)" : "var(--surface)", color: trocar ? "#fff" : "var(--text-secondary)" }}>
+                                      Trocar por nova
+                                    </button>
+                                  </div>
+                                </div>
+                                {trocar && (
+                                  <div style={{
+                                    display: "grid", gridTemplateColumns: "1fr 80px 56px",
+                                    gap: 8, alignItems: "center", marginTop: 8,
+                                    padding: "8px 10px", borderRadius: 6,
+                                    border: `1px solid ${semEstoque ? "var(--danger)" : vinculado ? "var(--success)" : "var(--info)"}`,
+                                    background: semEstoque ? "var(--danger-subtle)" : vinculado ? "var(--success-subtle)" : "var(--info-subtle)",
+                                  }}>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontWeight: 600, fontSize: "0.76rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nomeKitNovo}</div>
+                                      <div style={{ fontSize: "0.62rem", marginTop: 2 }}>
+                                        {semEstoque && <span style={{ color: "var(--danger)", fontWeight: 600 }}>❌ Não encontrado no estoque com este tamanho</span>}
+                                        {vinculado && !estoqueBaixo && <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinculado.quantity} em estoque</span>}
+                                        {vinculado && estoqueBaixo && <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ Apenas {vinculado.quantity} disponível</span>}
+                                        {!temTamanho && <span style={{ color: "var(--text-muted)" }}>Digite o tamanho →</span>}
+                                      </div>
+                                    </div>
+                                    <input
+                                      className="form-control"
+                                      value={item.tamanho}
+                                      onChange={e => atualizarTamanhoTroca(item.nomeKit, e.target.value)}
+                                      placeholder="Ex: G, 42"
+                                      style={{ textAlign: "center", fontWeight: 700, fontSize: "0.76rem", padding: "4px 6px" }}
+                                    />
+                                    <div style={{ textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, fontSize: "0.8rem", padding: "4px 6px", borderRadius: 5, background: "var(--surface)", border: "1px solid var(--border)" }}>
+                                      ×{item.qtde}
+                                    </div>
+                                  </div>
+                                )}
+                                {trocar && (
+                                  <div style={{ display: "flex", gap: 5, marginTop: 8, alignItems: "center" }}>
+                                    <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", fontWeight: 600 }}>Peça antiga vai para:</span>
+                                    {(["ESTOQUE", "DESCARTE"] as const).map(dest => (
+                                      <button key={dest} type="button" onClick={() => setDestinoDevolucao(item.nomeKit, dest)}
+                                        style={{ padding: "3px 9px", borderRadius: 5, cursor: "pointer", fontSize: "0.65rem", fontWeight: 700, border: `1px solid ${item.destinoDevolucao === dest ? (dest === "ESTOQUE" ? "var(--success)" : "var(--danger)") : "var(--border)"}`, background: item.destinoDevolucao === dest ? (dest === "ESTOQUE" ? "var(--success)" : "var(--danger)") : "var(--surface)", color: item.destinoDevolucao === dest ? "#fff" : "var(--text-secondary)" }}>
+                                        {dest === "ESTOQUE" ? "Estoque" : "Descartar"}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                       {itensTroca.filter(i => i.acao === "NOVO").length > 0 && (
                         <div>
                           <div style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase" as const, color: "var(--info)", marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-                            <IconPackage size={12} color="var(--info)"/>
-                            Novos Itens — saída registrada automaticamente ({itensTroca.filter(i => i.acao === "NOVO").length})
+                            <IconPackage size={12} color="var(--info)"/> Novos Itens — informe o tamanho ({itensTroca.filter(i => i.acao === "NOVO").length})
                           </div>
+                          <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", margin: "0 0 8px" }}>
+                            Informe o tamanho de cada item. Itens sem tamanho ou sem estoque não serão entregues automaticamente.
+                          </p>
                           {itensTroca.filter(i => i.acao === "NOVO").map((item, idx) => {
-                            const primeiraP = item.nomeKit.split(" ")[0].toUpperCase();
-                            const itemEstoque = todosItensEstoque.find(i => i.name.toUpperCase().includes(primeiraP));
-                            const temEstoque = itemEstoque && itemEstoque.quantity > 0;
+                            const temTamanho = item.tamanho.trim() !== "";
+                            const vinculado = item.itemVinculado;
+                            const semEstoque = temTamanho && !vinculado;
+                            const estoqueBaixo = !!vinculado && vinculado.quantity < item.qtde;
                             return (
-                              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 12px", background: "var(--info-subtle)", border: "1px solid var(--info)", borderRadius: 6, marginBottom: 5, fontSize: "0.78rem" }}>
-                                <div>
-                                  <span style={{ fontWeight: 600 }}>{item.nomeKit}</span>
-                                  {itemEstoque && <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginLeft: 8 }}>{itemEstoque.name}</span>}
+                              <div key={idx} style={{
+                                display: "grid", gridTemplateColumns: "1fr 80px 56px",
+                                gap: 8, alignItems: "center",
+                                padding: "8px 10px", marginBottom: 6,
+                                border: `1px solid ${semEstoque ? "var(--danger)" : vinculado ? "var(--success)" : "var(--info)"}`,
+                                borderRadius: 6,
+                                background: semEstoque ? "var(--danger-subtle)" : vinculado ? "var(--success-subtle)" : "var(--info-subtle)",
+                              }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontSize: "0.78rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {item.nomeKit}
+                                  </div>
+                                  <div style={{ fontSize: "0.63rem", marginTop: 2 }}>
+                                    {semEstoque && <span style={{ color: "var(--danger)", fontWeight: 600 }}>❌ Não encontrado no estoque com este tamanho</span>}
+                                    {vinculado && !estoqueBaixo && <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinculado.quantity} em estoque</span>}
+                                    {vinculado && estoqueBaixo && <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ Apenas {vinculado.quantity} disponível</span>}
+                                    {!temTamanho && <span style={{ color: "var(--text-muted)" }}>Digite o tamanho →</span>}
+                                  </div>
                                 </div>
-                                <span style={{ fontSize: "0.68rem", fontWeight: 700, color: temEstoque ? "var(--success)" : "var(--danger)" }}>
-                                  {temEstoque ? `${itemEstoque!.quantity} em estoque` : "Sem estoque"}
-                                </span>
+                                <input
+                                  className="form-control"
+                                  value={item.tamanho}
+                                  onChange={e => atualizarTamanhoTroca(item.nomeKit, e.target.value)}
+                                  placeholder="Ex: G, 42"
+                                  style={{ textAlign: "center", fontWeight: 700, fontSize: "0.78rem", padding: "4px 6px" }}
+                                />
+                                <div style={{
+                                  textAlign: "center", fontFamily: "'JetBrains Mono', monospace",
+                                  fontWeight: 800, fontSize: "0.82rem",
+                                  padding: "4px 6px", borderRadius: 5,
+                                  background: "var(--surface)", border: "1px solid var(--border)",
+                                }}>
+                                  ×{item.qtde}
+                                </div>
                               </div>
                             );
                           })}
                           <div style={{ padding: "7px 10px", background: "var(--brand-subtle)", border: "1px solid var(--brand)", borderRadius: 5, fontSize: "0.72rem", color: "var(--brand)", display: "flex", alignItems: "center", gap: 6 }}>
-                            <IconCheckCircle size={11} color="var(--brand)"/>
-                            Itens com estoque disponível serão entregues automaticamente ao confirmar.
+                            <IconCheckCircle size={11} color="var(--brand)"/> Apenas itens com tamanho vinculado ao estoque serão entregues ao confirmar.
                           </div>
                         </div>
                       )}
                     </div>
                   )}
-
                   {novoDepartamento && itensTroca.length === 0 && (
                     <div style={{ padding: "12px", background: "var(--surface-2)", borderRadius: 8, fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center" }}>
                       Kit não mapeado — a troca atualizará o departamento sem análise automática de uniformes.
