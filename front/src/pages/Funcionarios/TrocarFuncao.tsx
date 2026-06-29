@@ -200,7 +200,7 @@ export default function TrocarFuncao() {
   );
 
   return (
-    <div style={{ padding: "18px 24px 88px", maxWidth: 1320, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1320, margin: "0 auto", minHeight: "calc(100vh - 48px)", display: "flex", flexDirection: "column" }}>
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button onClick={() => navigate("/funcionarios")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.76rem", fontWeight: 600, cursor: "pointer" }}>
@@ -269,7 +269,7 @@ export default function TrocarFuncao() {
       )}
 
       {/* Barra fixa de resumo + ações */}
-      <div style={{ position: "sticky", bottom: 0, left: 0, marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "12px 18px", background: "var(--surface-2)", borderTop: "1px solid var(--border)", borderRadius: "12px 12px 0 0", boxShadow: "0 -2px 10px rgba(0,0,0,0.04)" }}>
+      <div style={{ position: "sticky", bottom: -1, marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", padding: "12px 18px", background: "var(--surface-2)", borderTop: "1px solid var(--border)", borderRadius: "12px 12px 0 0", boxShadow: "0 -2px 10px rgba(0,0,0,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontSize: "0.78rem" }}>
           {chip("Manter", resumo.manter, "var(--success)")}
           {chip("Trocar", resumo.trocar, "var(--info)")}
