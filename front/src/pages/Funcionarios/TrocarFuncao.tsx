@@ -66,7 +66,6 @@ export default function TrocarFuncao() {
     })();
   }, [id]);
 
-  // Recalcula as listas quando o destino muda (ou ao carregar).
   const recalcular = (deptNovo: string) => {
     if (!emp?.department || !deptNovo) { setPecas([]); setItensNovos([]); return; }
     const kitAntigo = UNIFORMES_POR_SETOR[emp.department];
@@ -148,7 +147,6 @@ export default function TrocarFuncao() {
       const saidasRes = await api.get("/getitemsout/" + emp.id);
       const saidasAtivas = saidasRes.data || [];
 
-      // Peças que saem do colaborador (trocar/devolver/descartar)
       const removidas = pecas.filter(p => p.decisao === "TROCAR" || p.decisao === "DEVOLVER" || p.decisao === "DESCARTAR");
       for (const p of removidas) {
         const primeira = p.nome.split(" ")[0].toUpperCase();
@@ -163,7 +161,6 @@ export default function TrocarFuncao() {
         }
       }
 
-      // Peças novas a entregar: as trocadas (peça nova) + os itens novos da função
       const entregar = [
         ...pecas.filter(p => p.decisao === "TROCAR" && p.itemVinculado).map(p => ({ item: p.itemVinculado!, qtde: p.qtde })),
         ...itensNovos.filter(i => i.itemVinculado).map(i => ({ item: i.itemVinculado!, qtde: i.qtde })),
@@ -183,25 +180,60 @@ export default function TrocarFuncao() {
     }
   };
 
+  // Renderiza uma linha de peça (usada ou não usada na nova função).
+  const renderPeca = (p: PecaAtual, comBorda: boolean) => (
+    <div key={p.nome} style={{ padding: "11px 14px", borderBottom: comBorda ? "1px solid var(--border)" : "none" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            {p.nome}{p.nomeNovo !== p.nome && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> → {p.nomeNovo}</span>}
+          </div>
+          <div style={{ fontSize: "0.64rem", color: "var(--text-muted)" }}>{p.motivo}</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+          {p.usadoNaNova ? (
+            <>
+              <button type="button" onClick={() => setDecisao(p.nome, "MANTER")} style={seg(p.decisao === "MANTER", "var(--success)")}><IconCheckCircle size={11} /> Manter</button>
+              <button type="button" onClick={() => setDecisao(p.nome, "TROCAR")} style={seg(p.decisao === "TROCAR", "var(--info)")}><IconRefreshCw size={11} /> Trocar</button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setDecisao(p.nome, "DEVOLVER")} style={seg(p.decisao === "DEVOLVER", "var(--success)")}><IconCornerDownLeft size={11} /> Devolver</button>
+              <button type="button" onClick={() => setDecisao(p.nome, "DESCARTAR")} style={seg(p.decisao === "DESCARTAR", "var(--danger)")}><IconTrash size={11} /> Descartar</button>
+            </>
+          )}
+        </div>
+      </div>
+      {p.decisao === "TROCAR" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border)", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "0.64rem", color: "var(--text-muted)", fontWeight: 600 }}>Peça antiga:</span>
+          <button type="button" onClick={() => setDestino(p.nome, "ESTOQUE")} style={segSm(p.destinoAntiga === "ESTOQUE", "var(--success)")}>Estoque</button>
+          <button type="button" onClick={() => setDestino(p.nome, "DESCARTE")} style={segSm(p.destinoAntiga === "DESCARTE", "var(--danger)")}>Descartar</button>
+          <span style={{ fontSize: "0.64rem", color: "var(--text-muted)", fontWeight: 600, marginLeft: 6 }}>Tamanho da nova:</span>
+          <input className="form-control" value={p.tamanho} onChange={e => setTamanhoPeca(p.nome, e.target.value)} placeholder="Ex: G, 42" style={{ width: 66, textAlign: "center", fontWeight: 700, fontSize: "0.72rem", padding: "4px 6px" }} />
+          <span style={{ fontSize: "0.64rem" }}>{statusEstoque(p.tamanho, p.itemVinculado, p.qtde)}</span>
+        </div>
+      )}
+    </div>
+  );
+
   if (carregando) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Carregando…</div>;
   if (!emp) return null;
 
+  const usadas = pecas.filter(p => p.usadoNaNova);
+  const naoUsadas = pecas.filter(p => !p.usadoNaNova);
   const semKit = !!novoDepartamento && pecas.length === 0 && itensNovos.length === 0;
 
   return (
-    <div style={{ padding: "20px 24px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: "20px 24px", maxWidth: 1180, margin: "0 auto" }}>
       {/* Cabeçalho */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, borderBottom: "1px solid var(--border)", paddingBottom: 14, marginBottom: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <button onClick={() => navigate("/funcionarios")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.76rem", fontWeight: 600, cursor: "pointer" }}>
-            <IconCornerDownLeft size={13} /> Voltar
-          </button>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "var(--text-primary)" }}>Trocar de função</h2>
-            <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-              {emp.name} · {emp.department} → {emp.role}
-            </div>
-          </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid var(--border)", paddingBottom: 14, marginBottom: 18 }}>
+        <button onClick={() => navigate("/funcionarios")} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-secondary)", fontSize: "0.76rem", fontWeight: 600, cursor: "pointer" }}>
+          <IconCornerDownLeft size={13} /> Voltar
+        </button>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "var(--text-primary)" }}>Trocar de função</h2>
+          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{emp.name} · {emp.department} → {emp.role}</div>
         </div>
       </div>
 
@@ -232,80 +264,54 @@ export default function TrocarFuncao() {
             </div>
           )}
 
-          {/* Peças atuais */}
+          {/* Duas colunas: usa na nova função × não usa */}
           {pecas.length > 0 && (
-            <>
-              <div style={secTitle}>Peças que o colaborador já tem</div>
-              <p style={secHint}>Para cada peça, diga a condição: manter (boa) ou trocar (desgastada). Itens que a nova função não usa: devolver ou descartar.</p>
-              <div style={listaCard}>
-                {pecas.map((p, idx) => (
-                  <div key={p.nome} style={{ padding: "11px 14px", borderBottom: idx < pecas.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                          {p.nome}{p.nomeNovo !== p.nome && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}> → {p.nomeNovo}</span>}
-                        </div>
-                        <div style={{ fontSize: "0.66rem", color: "var(--text-muted)" }}>{p.motivo}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        {p.usadoNaNova ? (
-                          <>
-                            <button type="button" onClick={() => setDecisao(p.nome, "MANTER")} style={seg(p.decisao === "MANTER", "var(--success)")}>
-                              <IconCheckCircle size={11} /> Manter
-                            </button>
-                            <button type="button" onClick={() => setDecisao(p.nome, "TROCAR")} style={seg(p.decisao === "TROCAR", "var(--info)")}>
-                              <IconRefreshCw size={11} /> Trocar
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button type="button" onClick={() => setDecisao(p.nome, "DEVOLVER")} style={seg(p.decisao === "DEVOLVER", "var(--success)")}>
-                              <IconCornerDownLeft size={11} /> Devolver
-                            </button>
-                            <button type="button" onClick={() => setDecisao(p.nome, "DESCARTAR")} style={seg(p.decisao === "DESCARTAR", "var(--danger)")}>
-                              <IconTrash size={11} /> Descartar
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {p.decisao === "TROCAR" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "0.66rem", color: "var(--text-muted)", fontWeight: 600 }}>Peça antiga:</span>
-                        <button type="button" onClick={() => setDestino(p.nome, "ESTOQUE")} style={segSm(p.destinoAntiga === "ESTOQUE", "var(--success)")}>Estoque</button>
-                        <button type="button" onClick={() => setDestino(p.nome, "DESCARTE")} style={segSm(p.destinoAntiga === "DESCARTE", "var(--danger)")}>Descartar</button>
-                        <span style={{ fontSize: "0.66rem", color: "var(--text-muted)", fontWeight: 600, marginLeft: 6 }}>Tamanho da nova:</span>
-                        <input className="form-control" value={p.tamanho} onChange={e => setTamanhoPeca(p.nome, e.target.value)} placeholder="Ex: G, 42" style={{ width: 70, textAlign: "center", fontWeight: 700, fontSize: "0.74rem", padding: "4px 6px" }} />
-                        <span style={{ fontSize: "0.66rem" }}>{statusEstoque(p.tamanho, p.itemVinculado, p.qtde)}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 14, alignItems: "start" }}>
+              {/* Usa na nova função */}
+              <div style={grupo("var(--success-subtle, #eef9f1)")}>
+                <div style={grupoHead("var(--success)")}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><IconCheckCircle size={12} /> A nova função usa</span>
+                  <span style={grupoBadge("var(--success)")}>{usadas.length}</span>
+                </div>
+                {usadas.length > 0
+                  ? usadas.map((p, i) => renderPeca(p, i < usadas.length - 1))
+                  : <div style={grupoVazio}>Nenhuma peça em comum com a nova função.</div>}
               </div>
-            </>
+
+              {/* Não usada na nova função */}
+              <div style={grupo("var(--warning-subtle, #fff8ec)")}>
+                <div style={grupoHead("var(--warning)")}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><IconCornerDownLeft size={12} /> Não usada na nova função</span>
+                  <span style={grupoBadge("var(--warning)")}>{naoUsadas.length}</span>
+                </div>
+                {naoUsadas.length > 0
+                  ? naoUsadas.map((p, i) => renderPeca(p, i < naoUsadas.length - 1))
+                  : <div style={grupoVazio}>Todas as peças continuam na nova função.</div>}
+              </div>
+            </div>
           )}
 
           {/* Itens novos */}
           {itensNovos.length > 0 && (
-            <>
-              <div style={secTitle}><IconPackage size={12} /> Itens novos da função</div>
-              <p style={secHint}>Informe o tamanho de cada item. Sem tamanho/estoque, o item não é entregue automaticamente.</p>
-              <div style={listaCard}>
-                {itensNovos.map((i, idx) => (
-                  <div key={i.nome} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px", borderBottom: idx < itensNovos.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>{i.nome}</div>
-                      <div style={{ fontSize: "0.66rem" }}>{statusEstoque(i.tamanho, i.itemVinculado, i.qtde)}</div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                      <input className="form-control" value={i.tamanho} onChange={e => setTamanhoNovo(i.nome, e.target.value)} placeholder="Ex: G, 42" style={{ width: 70, textAlign: "center", fontWeight: 700, fontSize: "0.76rem", padding: "4px 6px" }} />
-                      <span style={{ fontSize: "0.74rem", fontFamily: "monospace", fontWeight: 700, color: "var(--text-secondary)" }}>×{i.qtde}</span>
-                    </div>
-                  </div>
-                ))}
+            <div style={{ ...grupo("var(--info-subtle, #eef4fc)"), marginTop: 16 }}>
+              <div style={grupoHead("var(--info)")}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}><IconPackage size={12} /> Itens novos da função</span>
+                <span style={grupoBadge("var(--info)")}>{itensNovos.length}</span>
               </div>
-            </>
+              <div style={{ padding: "6px 14px 0", fontSize: "0.66rem", color: "var(--text-muted)" }}>Informe o tamanho. Sem tamanho/estoque, o item não é entregue automaticamente.</div>
+              {itensNovos.map((i, idx) => (
+                <div key={i.nome} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px", borderBottom: idx < itensNovos.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)" }}>{i.nome}</div>
+                    <div style={{ fontSize: "0.64rem" }}>{statusEstoque(i.tamanho, i.itemVinculado, i.qtde)}</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <input className="form-control" value={i.tamanho} onChange={e => setTamanhoNovo(i.nome, e.target.value)} placeholder="Ex: G, 42" style={{ width: 66, textAlign: "center", fontWeight: 700, fontSize: "0.74rem", padding: "4px 6px" }} />
+                    <span style={{ fontSize: "0.72rem", fontFamily: "monospace", fontWeight: 700, color: "var(--text-secondary)" }}>×{i.qtde}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -313,11 +319,11 @@ export default function TrocarFuncao() {
         <div style={{ position: "sticky", top: 16, background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
           <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>Resumo</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: "0.78rem" }}>
-            {linhaResumo("Manter", resumo.manter)}
-            {linhaResumo("Trocar", resumo.trocar)}
-            {linhaResumo("Devolver", resumo.devolver)}
-            {linhaResumo("Descartar", resumo.descartar)}
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>{linhaResumo("Novos a entregar", resumo.entregar)}</div>
+            {linhaResumo("Manter", resumo.manter, "var(--success)")}
+            {linhaResumo("Trocar", resumo.trocar, "var(--info)")}
+            {linhaResumo("Devolver", resumo.devolver, "var(--warning)")}
+            {linhaResumo("Descartar", resumo.descartar, "var(--danger)")}
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>{linhaResumo("Novos a entregar", resumo.entregar, "var(--text-primary)")}</div>
           </div>
           <button onClick={confirmar} disabled={salvando || !novoDepartamento}
             style={{ width: "100%", marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px", borderRadius: 7, border: "none", background: (!novoDepartamento || salvando) ? "var(--surface)" : "var(--info)", color: (!novoDepartamento || salvando) ? "var(--text-muted)" : "#fff", fontSize: "0.8rem", fontWeight: 700, cursor: (!novoDepartamento || salvando) ? "not-allowed" : "pointer" }}>
@@ -334,15 +340,22 @@ export default function TrocarFuncao() {
 
 // ── estilos/helpers ──
 const lbl: React.CSSProperties = { display: "block", fontSize: "0.66rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 5, letterSpacing: "0.04em" };
-const secTitle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 5, fontSize: "0.78rem", fontWeight: 700, color: "var(--text-secondary)", margin: "18px 0 6px" };
-const secHint: React.CSSProperties = { fontSize: "0.68rem", color: "var(--text-muted)", margin: "0 0 10px" };
-const listaCard: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", background: "var(--surface)" };
+const grupoVazio: React.CSSProperties = { padding: "16px 14px", fontSize: "0.72rem", color: "var(--text-muted)", textAlign: "center" };
 
+function grupo(bg: string): React.CSSProperties {
+  return { background: bg, border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" };
+}
+function grupoHead(cor: string): React.CSSProperties {
+  return { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", borderBottom: "1px solid var(--border)", fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.03em", color: cor };
+}
+function grupoBadge(cor: string): React.CSSProperties {
+  return { background: cor, color: "#fff", fontSize: "0.66rem", fontWeight: 800, padding: "1px 8px", borderRadius: 10, minWidth: 20, textAlign: "center" };
+}
 function seg(ativo: boolean, cor: string): React.CSSProperties {
   return { display: "flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 6, cursor: "pointer", fontSize: "0.7rem", fontWeight: 700, border: `1px solid ${ativo ? cor : "var(--border)"}`, background: ativo ? cor : "var(--surface)", color: ativo ? "#fff" : "var(--text-secondary)" };
 }
 function segSm(ativo: boolean, cor: string): React.CSSProperties {
-  return { padding: "3px 9px", borderRadius: 5, cursor: "pointer", fontSize: "0.66rem", fontWeight: 700, border: `1px solid ${ativo ? cor : "var(--border)"}`, background: ativo ? cor : "var(--surface)", color: ativo ? "#fff" : "var(--text-secondary)" };
+  return { padding: "3px 9px", borderRadius: 5, cursor: "pointer", fontSize: "0.64rem", fontWeight: 700, border: `1px solid ${ativo ? cor : "var(--border)"}`, background: ativo ? cor : "var(--surface)", color: ativo ? "#fff" : "var(--text-secondary)" };
 }
 function statusEstoque(tam: string, vinc: ItemEstoque | null, qtde: number) {
   if (!tam.trim()) return <span style={{ color: "var(--text-muted)" }}>Digite o tamanho →</span>;
@@ -350,11 +363,11 @@ function statusEstoque(tam: string, vinc: ItemEstoque | null, qtde: number) {
   if (vinc.quantity < qtde) return <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ Apenas {vinc.quantity} disponível</span>;
   return <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinc.quantity} em estoque</span>;
 }
-function linhaResumo(label: string, valor: number) {
+function linhaResumo(label: string, valor: number, cor: string) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
       <span style={{ color: "var(--text-secondary)" }}>{label}</span>
-      <span style={{ fontWeight: 700 }}>{valor}</span>
+      <span style={{ fontWeight: 700, color: cor }}>{valor}</span>
     </div>
   );
 }
