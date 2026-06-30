@@ -4,7 +4,7 @@ import { criarTransporter } from '../config/email.js';
 export async function enviarEmailPedido(pedido, destinatario) {
   const transporter = criarTransporter();
 
-  const COR = '#2563eb';
+  const COR = '#CC0000'; // vermelho da marca Hiper
   const itens = pedido.items || [];
   const totalItens = itens.length;
   const totalQtd = itens.reduce((acc, it) => acc + (Number(it.quantity || it.qty) || 0), 0);
