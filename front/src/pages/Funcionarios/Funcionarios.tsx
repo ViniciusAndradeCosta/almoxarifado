@@ -905,8 +905,8 @@ const Funcionarios = () => {
                                     </div>
                                     <div style={{ fontSize: "0.65rem", marginTop: 2 }}>
                                       {semEstoque && <span style={{ color: "var(--danger)", fontWeight: 600 }}>❌ Não encontrado no estoque com este tamanho</span>}
-                                      {vinculado && !estoqueBaixo && <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinculado.quantity} em estoque</span>}
-                                      {vinculado && estoqueBaixo && <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ Apenas {vinculado.quantity} disponível</span>}
+                                      {vinculado && !estoqueBaixo && <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinculado.name} — {vinculado.quantity} em estoque</span>}
+                                      {vinculado && estoqueBaixo && <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ {vinculado.name} — apenas {vinculado.quantity} disponível</span>}
                                       {!temTamanho && <span style={{ color: "var(--text-muted)" }}>Digite o tamanho →</span>}
                                     </div>
                                   </div>

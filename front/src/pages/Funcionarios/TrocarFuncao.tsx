@@ -328,6 +328,6 @@ function segSm(ativo: boolean, cor: string): React.CSSProperties {
 function statusEstoque(tam: string, vinc: ItemEstoque | null, qtde: number) {
   if (!tam.trim()) return <span style={{ color: "var(--text-muted)" }}>Digite o tamanho</span>;
   if (!vinc) return <span style={{ color: "var(--danger)", fontWeight: 600 }}>✕ Sem estoque</span>;
-  if (vinc.quantity < qtde) return <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ Só {vinc.quantity}</span>;
-  return <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinc.quantity} em estoque</span>;
+  if (vinc.quantity < qtde) return <span style={{ color: "var(--warning)", fontWeight: 600 }}>⚠ {vinc.name} — só {vinc.quantity}</span>;
+  return <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {vinc.name} — {vinc.quantity} em estoque</span>;
 }
