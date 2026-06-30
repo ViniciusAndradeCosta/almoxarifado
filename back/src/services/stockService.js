@@ -10,8 +10,11 @@ export function validarDataSaida(withdrawalDate) {
     throw { status: 400, message: "Data de saída inválida." };
   }
 
-  const hoje = new Date();
-  if (data > hoje) {
+  // Permite qualquer horário de HOJE (compara contra o fim do dia atual).
+  // Evita falso "futuro" por diferença de fuso entre cliente e servidor.
+  const fimDeHoje = new Date();
+  fimDeHoje.setHours(23, 59, 59, 999);
+  if (data > fimDeHoje) {
     throw { status: 400, message: "Data de saída não pode ser no futuro." };
   }
 

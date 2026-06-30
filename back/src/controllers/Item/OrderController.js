@@ -32,7 +32,7 @@ export async function createOrder(req, res) {
 export async function getOrders(req, res) {
   try {
     const orders = await prisma.order.findMany({
-      orderBy: { orderDate: "desc" },
+      orderBy: { id: "desc" }, // mais recente registrado primeiro
       include: { items: true },
     });
     return res.json(orders);

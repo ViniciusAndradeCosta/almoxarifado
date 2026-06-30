@@ -166,11 +166,7 @@ const Descartados = () => {
             if (filtroNome && !d.item.name.toLowerCase().includes(filtroNome.toLowerCase())) return false;
             return true;
         })
-        .sort((a, b) => {
-            const da = a.discardDate ? a.discardDate.substring(0, 19) : "";
-            const db = b.discardDate ? b.discardDate.substring(0, 19) : "";
-            return db.localeCompare(da);
-        });
+        .sort((a, b) => (b.id || 0) - (a.id || 0)); // mais recente registrado primeiro
 
     // Resumo
     const totalDescartado = filteredDiscards.reduce((acc, d) => acc + d.quantity, 0);

@@ -11,13 +11,12 @@ async function createItem(req, res) {
     try {
         const newItem = await prisma.item.create({
             data: {
-                id,
                 name: name.trim().toUpperCase(),
                 quantity: parseInt(quantity) || 0,
                 ean: ean?.trim() || null,
-                // type e sector são opcionais — não quebra se vier vazio
-                type:   type?.trim()   ? type.trim().toUpperCase()   : null,
-                sector: sector?.trim() ? sector.trim().toUpperCase() : null,
+                // type e sector são NOT NULL no schema — usa "" quando vier vazio
+                type:   type?.trim()   ? type.trim().toUpperCase()   : "",
+                sector: sector?.trim() ? sector.trim().toUpperCase() : "",
                 size:   size?.trim()   ? size.trim().toUpperCase()   : null,
             }
         });
@@ -68,8 +67,8 @@ async function updateItem(req, res) {
                 name:     name?.trim().toUpperCase()   ?? undefined,
                 ean:      ean?.trim()                  ?? null,
                 quantity: quantity !== undefined ? parseInt(quantity) : undefined,
-                type:     type?.trim()   ? type.trim().toUpperCase()   : null,
-                sector:   sector?.trim() ? sector.trim().toUpperCase() : null,
+                type:     type   !== undefined ? (type.trim().toUpperCase()   || "") : undefined,
+                sector:   sector !== undefined ? (sector.trim().toUpperCase() || "") : undefined,
                 size:     size?.trim()   ? size.trim().toUpperCase()   : null,
             }
         });

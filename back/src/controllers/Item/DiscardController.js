@@ -26,7 +26,7 @@ export async function createDiscard(req, res) {
 export async function getDiscarded(req, res) {
   try {
     const discards = await prisma.discardedItem.findMany({
-      orderBy: { discardDate: "desc" },
+      orderBy: { id: "desc" }, // mais recente registrado primeiro
       include: {
         item: {
           select: { name: true, type: true, sector: true, size: true },

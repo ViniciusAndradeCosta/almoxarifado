@@ -5,6 +5,7 @@ import { Cabinet } from '../../types/Cabinet';
 import { format } from 'date-fns';
 import { Employee } from '../../types/Employee';
 import { IconSearch, IconDownload, IconEdit } from '../../components/Icons';
+import { SearchDropdown } from '../../components/SearchDropdown';
 
 const Armario = () => {
     const [armarios, setArmarios]           = useState<Cabinet[]>([]);
@@ -15,6 +16,7 @@ const Armario = () => {
     const [armariosDisponiveis, setArmariosDisponiveis] = useState(0);
     const [armariosOcupados, setArmariosOcupados]       = useState(0);
     const [funcionarios, setFuncionarios]   = useState<Employee[]>([]);
+    const [funcsFiltrados, setFuncsFiltrados] = useState<Employee[]>([]);
     const [showModal, setShowModal]         = useState(false);
 
     useEffect(() => {
@@ -232,20 +234,22 @@ const Armario = () => {
                         </div>
                         <div style={{ padding: '16px 20px' }}>
                             <label style={lbl}>Nome do Ocupante</label>
-                            <input
-                                type="text"
-                                className="form-control"
+                            <SearchDropdown<Employee>
                                 value={nomeOcupante}
-                                onChange={e => setNomeOcupante(e.target.value)}
-                                placeholder="Digite o nome do ocupante"
-                                list="funcionarios-list"
-                                autoComplete="off"
+                                onChange={(val) => {
+                                    setNomeOcupante(val);
+                                    const v = val.trim().toLowerCase();
+                                    setFuncsFiltrados(v ? funcionarios.filter(f => f.name.toLowerCase().includes(v)).slice(0, 30) : []);
+                                }}
+                                onSelect={(f) => { setNomeOcupante(f.name); setFuncsFiltrados([]); }}
+                                onClear={() => setFuncsFiltrados([])}
+                                items={funcsFiltrados}
+                                placeholder="Digite o nome do funcionário"
+                                getKey={(f) => f.id ?? f.name}
+                                renderItem={(f) => (
+                                    <div style={{ padding: '8px 12px', fontSize: '0.8rem' }}>{f.name}</div>
+                                )}
                             />
-                            <datalist id="funcionarios-list">
-                                {funcionarios.map(f => (
-                                    <option key={f.id} value={f.name}>{f.name}</option>
-                                ))}
-                            </datalist>
                         </div>
                         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             <button onClick={() => setShowModal(false)} style={{ padding: '8px 18px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-secondary)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}>

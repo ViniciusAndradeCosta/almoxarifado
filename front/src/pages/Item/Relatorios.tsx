@@ -27,6 +27,7 @@ interface ConsumptionItem {
     itemName: string;
     itemType: string;
     itemSector: string;
+    itemSize?: string | null;
     totalSaidas: number;
     estoqueAtual: number;
 }
@@ -465,6 +466,7 @@ const Relatorios = () => {
                                                 <th>Item</th>
                                                 <th>Tipo</th>
                                                 <th>Setor</th>
+                                                <th>Tamanho</th>
                                                 <th>Total Saídas</th>
                                                 <th>Estoque Atual</th>
                                             </tr>
@@ -476,6 +478,7 @@ const Relatorios = () => {
                                                     <td>{item.itemName}</td>
                                                     <td>{item.itemType}</td>
                                                     <td>{item.itemSector}</td>
+                                                    <td>{item.itemSize || "—"}</td>
                                                     <td>{item.totalSaidas}</td>
                                                     <td>{item.estoqueAtual}</td>
                                                 </tr>

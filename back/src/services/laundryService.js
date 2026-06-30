@@ -71,7 +71,7 @@ export async function enviarParaLavanderia({ itemId, quantity, expectedReturn, l
 
 // Registra retorno da lavanderia (TRANSACIONAL)
 // Incrementa o estoque de volta e atualiza o registro.
-export async function retornarDaLavanderia(recordId, { quantityReturned, returnDate, notes }) {
+export async function retornarDaLavanderia(recordId, { quantityReturned, returnDate, notes, descartarFaltantes }) {
   const recId = Number(recordId);
 
   return prisma.$transaction(async (tx) => {
@@ -102,28 +102,35 @@ export async function retornarDaLavanderia(recordId, { quantityReturned, returnD
     }
 
     const dataRetorno = returnDate ? new Date(returnDate) : new Date();
+    const perdas = record.quantity - qtyReturn;
 
+    // Marca o registro como retornado com a quantidade que efetivamente voltou.
     const updatedRecord = await tx.laundryRecord.update({
       where: { id: recId },
       data: {
         status: "RETORNADA",
         returnDate: dataRetorno,
+        quantity: qtyReturn,
         notes: notes ? `${record.notes || ""} | Retorno: ${notes}` : record.notes,
       },
     });
 
     let updatedItem = await tx.item.findUnique({ where: { id: record.itemId } });
     let discardRecord = null;
-    const perdas = record.quantity - qtyReturn;
+    let pendenteRestante = null;
 
-    // Só mexe no estoque se for do tipo ESTOQUE
+    // Devolve ao estoque apenas o que voltou (somente tipo ESTOQUE).
     if (tipoEnvio === "ESTOQUE") {
       updatedItem = await tx.item.update({
         where: { id: record.itemId },
         data: { quantity: { increment: qtyReturn } },
       });
+    }
 
-      if (perdas > 0) {
+    // Trata as peças que não voltaram nesta data.
+    if (perdas > 0) {
+      if (descartarFaltantes) {
+        // Usuário confirmou que as peças faltantes foram perdidas → descarta.
         discardRecord = await tx.discardedItem.create({
           data: {
             itemId: record.itemId,
@@ -134,10 +141,24 @@ export async function retornarDaLavanderia(recordId, { quantityReturned, returnD
             discardDate: dataRetorno,
           },
         });
+      } else {
+        // Ainda podem voltar em outra data → mantém um registro pendente.
+        pendenteRestante = await tx.laundryRecord.create({
+          data: {
+            itemId: record.itemId,
+            quantity: perdas,
+            status: "ENVIADA",
+            sendDate: record.sendDate,
+            expectedReturn: record.expectedReturn,
+            laundryName: tipoEnvio,
+            sentBy: record.sentBy,
+            notes: `Retorno parcial do registro #${recId} — ${perdas} peça(s) ainda na lavanderia.`,
+          },
+        });
       }
     }
 
-    return { record: updatedRecord, item: updatedItem, perdas, discardRecord, tipo: tipoEnvio };
+    return { record: updatedRecord, item: updatedItem, perdas, discardRecord, pendenteRestante, tipo: tipoEnvio };
   });
 }
 

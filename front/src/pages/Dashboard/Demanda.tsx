@@ -247,7 +247,7 @@ const DemandPage = () => {
                     </td>
                     <td style={{ textAlign: "center" }}>
                       {needsRestock && (
-                        <Link to="/pedidos" style={{
+                        <Link to={`/pedidos?itemId=${item.itemId}&itemName=${encodeURIComponent(item.itemName)}&itemType=${encodeURIComponent(item.itemType || "")}&itemSize=${encodeURIComponent((item as any).itemSize || "")}&qty=${Math.ceil(item.suggestedRestock)}`} style={{
                           display: "inline-flex", alignItems: "center", gap: 4,
                           padding: "4px 10px", borderRadius: 5, border: "none",
                           background: "var(--brand)", color: "#fff",

@@ -4,13 +4,19 @@ import { criarTransporter } from '../config/email.js';
 export async function enviarEmailPedido(pedido, destinatario) {
   const transporter = criarTransporter();
 
-  const itensHtml = (pedido.items || [])
+  const COR = '#2563eb';
+  const itens = pedido.items || [];
+  const totalItens = itens.length;
+  const totalQtd = itens.reduce((acc, it) => acc + (Number(it.quantity || it.qty) || 0), 0);
+
+  const itensHtml = itens
     .map(
-      (it) =>
-        `<tr>
-          <td style="padding:6px 10px;border:1px solid #ddd">${it.itemName || it.name}</td>
-          <td style="padding:6px 10px;border:1px solid #ddd;text-align:center">${it.itemSize || it.size || '—'}</td>
-          <td style="padding:6px 10px;border:1px solid #ddd;text-align:center">${it.quantity || it.qty}</td>
+      (it, i) =>
+        `<tr style="background:${i % 2 === 0 ? '#f7f9fc' : '#fff'}">
+          <td style="padding:10px 14px;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:13px;font-weight:700">${it.itemName || it.name}</td>
+          <td style="padding:10px 14px;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:13px">${it.itemType || '—'}</td>
+          <td style="padding:10px 14px;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:13px;text-align:center">${it.itemSize || it.size || '—'}</td>
+          <td style="padding:10px 14px;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:13px;text-align:center;font-weight:800;color:${COR}">${it.quantity || it.qty}</td>
         </tr>`
     )
     .join('');
@@ -18,25 +24,63 @@ export async function enviarEmailPedido(pedido, destinatario) {
   const dataFormatada = new Date(pedido.orderDate || Date.now()).toLocaleDateString('pt-BR');
 
   const html = `
-    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-      <h2 style="color:#2563eb">Novo Pedido #${pedido.id}</h2>
-      <p><strong>Data:</strong> ${dataFormatada}</p>
-      ${pedido.supplier ? `<p><strong>Fornecedor:</strong> ${pedido.supplier}</p>` : ''}
-      ${pedido.notes ? `<p><strong>Observações:</strong> ${pedido.notes}</p>` : ''}
-      <h3 style="margin-top:20px">Itens do Pedido</h3>
-      <table style="width:100%;border-collapse:collapse">
-        <thead>
-          <tr style="background:#f3f4f6">
-            <th style="padding:8px 10px;border:1px solid #ddd;text-align:left">Item</th>
-            <th style="padding:8px 10px;border:1px solid #ddd">Tamanho</th>
-            <th style="padding:8px 10px;border:1px solid #ddd">Qtd</th>
-          </tr>
-        </thead>
-        <tbody>${itensHtml}</tbody>
-      </table>
-      <p style="margin-top:20px;color:#6b7280;font-size:12px">
-        Este e-mail foi gerado automaticamente pelo sistema de almoxarifado.
-      </p>
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f4f4f4;padding:20px">
+      <div style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+
+        <div style="background:#1A1A1A;padding:22px 28px;border-radius:8px 8px 0 0">
+          <table style="width:100%;border-collapse:collapse"><tr>
+            <td style="vertical-align:middle">
+              <table style="border-collapse:collapse"><tr>
+                <td style="vertical-align:middle;padding-right:14px">
+                  <div style="background:${COR};width:5px;height:40px;border-radius:3px"></div>
+                </td>
+                <td style="vertical-align:middle">
+                  <div style="color:#fff;font-size:17px;font-weight:800;font-family:Arial,sans-serif">🛒 Novo Pedido #${pedido.id}</div>
+                  <div style="color:#999;font-size:12px;margin-top:3px;font-family:Arial,sans-serif">Hiper Comercial Monlevade — Almoxarifado</div>
+                </td>
+              </tr></table>
+            </td>
+            <td style="text-align:right;vertical-align:middle">
+              <div style="background:${COR};color:#fff;padding:6px 16px;border-radius:5px;font-size:13px;font-weight:800;font-family:Arial,sans-serif">
+                ${totalItens} item${totalItens !== 1 ? 'ns' : ''} · ${totalQtd} un.
+              </div>
+            </td>
+          </tr></table>
+        </div>
+
+        <div style="padding:24px 28px">
+          <table style="width:100%;border-collapse:collapse;margin-bottom:18px;font-family:Arial,sans-serif;font-size:13px;color:#444">
+            <tr><td style="padding:3px 0;width:120px;color:#888">Data</td><td style="padding:3px 0;font-weight:700">${dataFormatada}</td></tr>
+            ${pedido.supplier ? `<tr><td style="padding:3px 0;color:#888">Fornecedor</td><td style="padding:3px 0;font-weight:700">${pedido.supplier}</td></tr>` : ''}
+            ${pedido.notes ? `<tr><td style="padding:3px 0;color:#888;vertical-align:top">Observações</td><td style="padding:3px 0">${pedido.notes}</td></tr>` : ''}
+          </table>
+
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:${COR}22">
+                <th style="padding:9px 14px;text-align:left;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:12px;font-weight:700">Item</th>
+                <th style="padding:9px 14px;text-align:left;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:12px;font-weight:700">Tipo</th>
+                <th style="padding:9px 14px;text-align:center;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:12px;font-weight:700">Tamanho</th>
+                <th style="padding:9px 14px;text-align:center;border:1px solid #e0e0e0;font-family:Arial,sans-serif;font-size:12px;font-weight:700">Qtd</th>
+              </tr>
+            </thead>
+            <tbody>${itensHtml}</tbody>
+          </table>
+        </div>
+
+        <div style="background:#1A1A1A;padding:14px 28px;border-top:3px solid ${COR}">
+          <table style="width:100%;border-collapse:collapse"><tr>
+            <td>
+              <div style="color:#fff;font-size:13px;font-weight:800;font-family:Arial,sans-serif">Hiper Comercial Monlevade</div>
+              <div style="color:#666;font-size:11px;font-family:Arial,sans-serif;margin-top:2px">Sistema de Almoxarifado · E-mail automático</div>
+            </td>
+            <td style="text-align:right;vertical-align:middle">
+              <div style="color:#555;font-size:11px;font-family:Arial,sans-serif">${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
+            </td>
+          </tr></table>
+        </div>
+
+      </div>
     </div>
   `;
 

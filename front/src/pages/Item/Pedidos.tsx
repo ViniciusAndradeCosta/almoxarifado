@@ -43,12 +43,14 @@ const Pedidos = () => {
         const itemName = params.get("itemName");
         const itemType = params.get("itemType");
         const itemSize = params.get("itemSize");
+        const qty      = params.get("qty");
 
         if (itemId && itemName) {
             setNovoItemId(Number(itemId));
             setNovoItemName(decodeURIComponent(itemName));
             setNovoItemType(decodeURIComponent(itemType || ""));
             setNovoItemSize(decodeURIComponent(itemSize || ""));
+            if (qty) setNovoItemQty(Math.max(1, parseInt(qty) || 1));
             // Scroll suave para o formulário
             setTimeout(() => {
                 document.getElementById("form-adicionar-item")?.scrollIntoView({ behavior: "smooth", block: "center" });

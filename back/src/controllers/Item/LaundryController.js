@@ -25,19 +25,24 @@ export async function sendToLaundry(req, res) {
 // POST /laundry/return/:id — registra retorno da lavanderia
 export async function returnFromLaundry(req, res) {
   const { id } = req.params;
-  const { quantityReturned, returnDate, notes } = req.body;
+  const { quantityReturned, returnDate, notes, descartarFaltantes } = req.body;
 
   try {
-    const result = await retornarDaLavanderia(id, { quantityReturned, returnDate, notes });
+    const result = await retornarDaLavanderia(id, { quantityReturned, returnDate, notes, descartarFaltantes });
+    let message = "Retorno registrado com sucesso (estoque restaurado).";
+    if (result.perdas > 0) {
+      message = descartarFaltantes
+        ? `Retorno registrado. ${result.perdas} peça(s) faltante(s) registrada(s) como descarte.`
+        : `Retorno parcial registrado. ${result.perdas} peça(s) mantida(s) como pendente para retornar em outra data.`;
+    }
     return res.json({
       success: true,
       record: result.record,
       item: result.item,
       perdas: result.perdas,
       discardRecord: result.discardRecord,
-      message: result.perdas > 0
-        ? `Retorno registrado. ${result.perdas} peça(s) perdida(s) registrada(s) como descarte.`
-        : "Retorno registrado com sucesso (estoque restaurado).",
+      pendenteRestante: result.pendenteRestante,
+      message,
     });
   } catch (error) {
     const status = error.status || 500;

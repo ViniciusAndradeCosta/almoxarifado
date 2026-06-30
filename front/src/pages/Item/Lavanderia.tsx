@@ -166,11 +166,25 @@ const Lavanderia = () => {
     const handleReturn = async () => {
         if (!returnRecord) return;
         if (returnQty <= 0) { window.alert("Quantidade inválida!"); return; }
+
+        // Retorno parcial: pergunta o que fazer com as peças que faltaram
+        // (descartar agora ou manter pendentes para voltar em outra data).
+        let descartarFaltantes = false;
+        const faltam = returnRecord.quantity - returnQty;
+        if (faltam > 0) {
+            descartarFaltantes = window.confirm(
+                `Faltaram ${faltam} peça(s) neste retorno.\n\n` +
+                `• OK = DESCARTAR as ${faltam} peça(s) (perdidas)\n` +
+                `• Cancelar = MANTER pendentes para retornar em outra data`
+            );
+        }
+
         try {
             const res = await api.post(`/laundry/return/${returnRecord.id}`, {
                 quantityReturned: returnQty,
                 returnDate: new Date(returnDate).toISOString(),
                 notes: returnNotes || null,
+                descartarFaltantes,
             });
             if (res.data.success) {
                 window.alert(res.data.message);

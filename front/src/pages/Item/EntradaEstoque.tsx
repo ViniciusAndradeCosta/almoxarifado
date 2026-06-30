@@ -76,9 +76,14 @@ const EntradaEstoque = () => {
             return;
         }
         try {
+            // Combina a data escolhida com a HORA LOCAL atual, evitando que o
+            // backend grave meia-noite UTC (que apareceria com horário/dia errado).
+            const agora = new Date();
+            const [ay, am, ad] = entryDate.split("-").map(Number);
+            const dataEntrada = new Date(ay, am - 1, ad, agora.getHours(), agora.getMinutes(), agora.getSeconds());
             const res = await api.post("/stockentry", {
                 itemId: selectedItemId, quantity,
-                entryDate: new Date(entryDate).toISOString(),
+                entryDate: dataEntrada.toISOString(),
                 supplier: supplier || null,
                 invoiceNumber: invoiceNumber || null,
                 notes: notes || null,

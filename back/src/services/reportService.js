@@ -126,6 +126,7 @@ export async function relatorioConsumoGeral(dataInicio, dataFim) {
         itemName: s.itemName,
         itemType: s.itemType,
         itemSector: s.itemSector,
+        itemSize: s.itemSize || null,
         totalSaidas: 0,
       };
     }
