@@ -267,8 +267,8 @@ const Relatorios = () => {
                                                         onMouseEnter={() => setHighlightedItemIndex(idx)}
                                                         style={{ padding: "8px 12px", cursor: "pointer", background: idx === highlightedItemIndex ? "var(--brand)" : "transparent", color: idx === highlightedItemIndex ? "#fff" : "var(--text-primary)", transition: "background 0.1s", borderBottom: idx < filteredItems.length - 1 ? "1px solid var(--border)" : "none" }}
                                                     >
-                                                        <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}</div>
-                                                        <div style={{ fontSize: "0.68rem", color: idx === highlightedItemIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)" }}>{item.type} · {item.sector}</div>
+                                                        <div style={{ fontWeight: 600, fontSize: "0.78rem" }}>{item.name}{item.size ? ` — Tam. ${item.size}` : ""}</div>
+                                                        <div style={{ fontSize: "0.68rem", color: idx === highlightedItemIndex ? "rgba(255,255,255,0.8)" : "var(--text-muted)" }}>{item.type}{item.size ? ` · Tam. ${item.size}` : ""} · {item.sector} · Estoque: {item.quantity}</div>
                                                     </li>
                                                 ))}
                                             </ul>
