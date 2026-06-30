@@ -49,6 +49,8 @@ const Lavanderia = () => {
     const [showReturnModal, setShowReturnModal] = useState(false);
     const [returnRecord, setReturnRecord]       = useState<LaundryRecord | null>(null);
     const [returnQty, setReturnQty]             = useState<number>(0);
+    const [showFaltantesModal, setShowFaltantesModal] = useState(false);
+    const [faltamQtd, setFaltamQtd]             = useState(0);
     const [returnDate, setReturnDate]           = useState(() => new Date().toISOString().split("T")[0]);
     const [returnNotes, setReturnNotes]         = useState("");
 
@@ -163,22 +165,24 @@ const Lavanderia = () => {
         setShowReturnModal(true);
     };
 
-    const handleReturn = async () => {
+    // Valida e decide: se faltarem peças, abre o modal estilizado de escolha;
+    // senão, registra o retorno direto.
+    const handleReturn = () => {
         if (!returnRecord) return;
         if (returnQty <= 0) { window.alert("Quantidade inválida!"); return; }
-
-        // Retorno parcial: pergunta o que fazer com as peças que faltaram
-        // (descartar agora ou manter pendentes para voltar em outra data).
-        let descartarFaltantes = false;
         const faltam = returnRecord.quantity - returnQty;
         if (faltam > 0) {
-            descartarFaltantes = window.confirm(
-                `Faltaram ${faltam} peça(s) neste retorno.\n\n` +
-                `• OK = DESCARTAR as ${faltam} peça(s) (perdidas)\n` +
-                `• Cancelar = MANTER pendentes para retornar em outra data`
-            );
+            setFaltamQtd(faltam);
+            setShowFaltantesModal(true);
+        } else {
+            executarRetorno(false);
         }
+    };
 
+    // Efetua o retorno na API. descartarFaltantes define o destino das peças
+    // que não voltaram (descartar agora x manter pendentes para outra data).
+    const executarRetorno = async (descartarFaltantes: boolean) => {
+        if (!returnRecord) return;
         try {
             const res = await api.post(`/laundry/return/${returnRecord.id}`, {
                 quantityReturned: returnQty,
@@ -188,6 +192,7 @@ const Lavanderia = () => {
             });
             if (res.data.success) {
                 window.alert(res.data.message);
+                setShowFaltantesModal(false);
                 setShowReturnModal(false); setReturnRecord(null);
                 fetchPendentes(); fetchHistorico(); fetchItems();
             }
@@ -596,11 +601,6 @@ const Lavanderia = () => {
                                 <input type="number" className="form-control" value={returnQty || ""}
                                     onChange={e => setReturnQty(e.target.value === "" ? 0 : Number(e.target.value))}
                                     min={1} max={returnRecord.quantity}/>
-                                {returnRecord.laundryName === "ESTOQUE" && (
-                                    <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", margin: "4px 0 0" }}>
-                                        Se retornar menos que {returnRecord.quantity}, a diferença será registrada como descarte.
-                                    </p>
-                                )}
                             </div>
                             <div>
                                 <label style={lbl}>Data do Retorno</label>
@@ -617,6 +617,37 @@ const Lavanderia = () => {
                             </button>
                             <button onClick={handleReturn} style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: "var(--success)", color: "#fff", fontSize: "0.76rem", fontWeight: 700, cursor: "pointer" }}>
                                 Confirmar Retorno
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de escolha quando faltam peças no retorno */}
+            {showFaltantesModal && returnRecord && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 210, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, width: 430, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+                        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", fontWeight: 800, fontSize: "0.9rem" }}>
+                            Faltaram {faltamQtd} peça(s) no retorno
+                        </div>
+                        <div style={{ padding: "16px 20px 6px", fontSize: "0.82rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
+                            {faltamQtd} de {returnRecord.quantity} peça(s) não voltaram nesta data. O que deseja fazer com elas?
+                        </div>
+                        <div style={{ padding: "10px 20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                            <button onClick={() => executarRetorno(false)}
+                                style={{ textAlign: "left", padding: "12px 14px", borderRadius: 8, border: "1px solid var(--success)", background: "var(--success-subtle, #eef9f1)", cursor: "pointer" }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--success)" }}>Manter pendentes</div>
+                                <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", marginTop: 2 }}>Ainda podem voltar em outra data (continuam na lavanderia).</div>
+                            </button>
+                            <button onClick={() => executarRetorno(true)}
+                                style={{ textAlign: "left", padding: "12px 14px", borderRadius: 8, border: "1px solid var(--danger)", background: "var(--danger-subtle, #fdeeee)", cursor: "pointer" }}>
+                                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "var(--danger)" }}>Descartar as {faltamQtd} peça(s)</div>
+                                <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)", marginTop: 2 }}>Consideradas perdidas; registra um descarte.</div>
+                            </button>
+                        </div>
+                        <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
+                            <button onClick={() => setShowFaltantesModal(false)} style={{ padding: "8px 18px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surface-2)", color: "var(--text-secondary)", fontSize: "0.76rem", fontWeight: 600, cursor: "pointer" }}>
+                                Voltar
                             </button>
                         </div>
                     </div>
