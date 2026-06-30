@@ -24,6 +24,7 @@ interface FeedItem {
   tipo: "entrada" | "saida" | "devolucao_estoque" | "devolucao_descarte";
   descricao: string;
   quantidade: number;
+  data: string;
   horario: string;
   ts: number;
 }
@@ -580,7 +581,8 @@ const s = {
     fontFamily: "'JetBrains Mono', monospace",
     fontSize: "0.7rem",
     color: "var(--text-muted)",
-    minWidth: 36,
+    minWidth: 78,
+    whiteSpace: "nowrap",
   } as React.CSSProperties,
 
   feedBadge: (tipo: FeedItem["tipo"]): React.CSSProperties => ({
@@ -767,6 +769,7 @@ const Hoje = () => {
         tipo: "entrada" as const,
         descricao: `${e.item?.name || "Item"} — ${e.supplier || "Entrada manual"}`,
         quantidade: e.quantity,
+        data: new Date(e.entryDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         horario: new Date(e.entryDate).toLocaleTimeString("pt-BR", {
           hour: "2-digit",
           minute: "2-digit",
@@ -790,6 +793,7 @@ const Hoje = () => {
           tipo,
           descricao: desc,
           quantidade: s.quantity,
+          data: new Date(s.withdrawalDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
           horario: new Date(s.withdrawalDate).toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
@@ -890,9 +894,13 @@ const Hoje = () => {
     try {
       setSending(true);
       
-      const dataFinal = dataEntrega 
-        ? new Date(`${dataEntrega}T12:00:00`).toISOString() 
-        : new Date().toISOString();
+      // Combina a data escolhida com a HORA LOCAL atual (em vez de fixar meio-dia),
+      // para a movimentação mostrar o horário real do registro.
+      const agora = new Date();
+      const [dy, dm, dd] = (dataEntrega || "").split("-").map(Number);
+      const dataFinal = dataEntrega
+        ? new Date(dy, dm - 1, dd, agora.getHours(), agora.getMinutes(), agora.getSeconds()).toISOString()
+        : agora.toISOString();
 
       await Promise.all(
         cart.map((c) =>
@@ -1397,7 +1405,7 @@ const Hoje = () => {
                       i < feed.length - 1 ? "1px solid var(--border)" : "none",
                   }}
                 >
-                  <span style={s.feedTime}>{item.horario}</span>
+                  <span style={s.feedTime}>{item.data} {item.horario}</span>
                   <span style={s.feedBadge(item.tipo)}>{feedLabel(item.tipo)}</span>
                   <span style={s.feedDesc}>{item.descricao}</span>
                   <span style={s.feedQty}>×{item.quantidade}</span>
