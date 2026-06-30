@@ -11,7 +11,8 @@
     "studio": "npx prisma studio",
     "importar": "node --env-file=.env scripts/importar-dados.js",
     "importar-armarios": "node --env-file=.env scripts/importar-armarios.js",
-    "criar-admin": "node --env-file=.env scripts/criar-admin.js"
+    "criar-admin": "node --env-file=.env scripts/criar-admin.js",
+    "importar-estoque-teste": "node --env-file=.env scripts/importar-estoque-teste.js"
   },
   "type": "module",
   "engines": {
